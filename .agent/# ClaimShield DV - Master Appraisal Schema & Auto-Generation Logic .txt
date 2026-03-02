@@ -1,0 +1,2744 @@
+# ClaimShield DV - Master Appraisal Schema & Auto-Generation Logic
+
+## Document Purpose
+This schema defines the complete data model and auto-generation rules for producing professional diminished value appraisal reports. The system is divided into **User Input Fields** (variable data) and **Auto-Generated Fields** (computed commentary, analysis, and calculations).
+
+---
+
+## SECTION 1: USER INPUT FIELDS (Variable Data)
+
+### 1.1 Appraisal Metadata
+```typescript
+AppraisalMetadata {
+  claim_number: string (optional)
+  appraisal_date: date (auto: current date)
+  accident_date: date (required)
+  purpose: enum (
+    "insurance_claim" | 
+    "legal_proceeding" | 
+    "dispute_resolution" | 
+    "expert_testimony"
+  ) (required)
+  intended_use: string (default: "Support insurance or legal claims")
+}
+```
+
+### 1.2 Vehicle Owner Information
+```typescript
+VehicleOwner {
+  full_name: string (required)
+  address: {
+    street: string
+    city: string
+    state: string (2-letter code)
+    zip: string
+  }
+  phone: string (format: (XXX) XXX-XXXX)
+  email: string (email validation)
+}
+```
+
+### 1.3 Insurance Information
+```typescript
+InsuranceInfo {
+  insurance_company: string (required)
+  policy_number: string (optional)
+  claim_number: string (optional)
+  adjuster_name: string (optional)
+  adjuster_phone: string (optional)
+}
+```
+
+### 1.4 Subject Vehicle Details
+```typescript
+SubjectVehicle {
+  vin: string (17 chars, validate format) (required)
+  year: number (1980-current) (required)
+  make: string (required)
+  model: string (required)
+  trim: string (required)
+  body_style: string (e.g., "4D Sedan", "SUV")
+  engine: string (e.g., "2.5L 4 Cyl Gas")
+  transmission: string (e.g., "8 Speed Auto Trans FWD")
+  exterior_color: string
+  interior_color: string
+  production_date: string (MM/YYYY format)
+  
+  // Mileage
+  mileage_at_accident: number (required)
+  
+  // Equipment & Features (checkboxes)
+  standard_features: string[] (auto-populate from VIN decode if possible)
+  optional_equipment: EquipmentItem[] {
+    name: string
+    factory_price: number (used for comp adjustments)
+  }
+  
+  // Condition Assessment (NAAA Grading Scale)
+  pre_accident_condition: {
+    overall_grade: enum (
+      "excellent" |    // Grade 5
+      "good" |         // Grade 4  
+      "average" |      // Grade 3
+      "below_average" | // Grade 2
+      "rough"          // Grade 1
+    ) (required)
+    
+    mechanical_condition: enum ("excellent" | "good" | "fair" | "poor")
+    tire_condition: enum ("new" | "good_tread" | "average_tread" | "worn")
+    paint_condition: enum ("excellent" | "good" | "fair" | "poor")
+    body_condition: enum ("no_damage" | "minor_dings" | "moderate_wear" | "significant_damage")
+    glass_condition: enum ("perfect" | "minor_pitting" | "chips" | "cracks")
+    interior_condition: enum ("excellent" | "good" | "fair" | "poor")
+    
+    maintenance_notes: string (optional, e.g., "Regular service at dealer, new tires 3 months before accident")
+  }
+  
+  // Prior Damage History
+  prior_accidents: boolean
+  prior_accident_details: string (if true, describe)
+}
+```
+
+### 1.5 Accident & Damage Details
+```typescript
+AccidentDetails {
+  loss_type: enum ("collision" | "comprehensive") (required)
+  point_of_impact: enum (
+    "front" | "rear" | "left_side" | "right_side" | 
+    "left_front_corner" | "right_front_corner" | 
+    "left_rear_corner" | "right_rear_corner" | "rollover"
+  ) (required)
+  
+  // Damage Classification (Critical for severity calculation)
+  structural_damage: boolean (required)
+  frame_damage: boolean (required)
+  unibody_deformation: boolean (if applicable)
+  airbag_deployment: boolean (required)
+  
+  // Repair Details
+  repair_facility: string (name of body shop)
+  repair_facility_phone: string
+  total_repair_cost: number (required, USD)
+  
+  // Labor Breakdown
+  body_labor_hours: number
+  frame_labor_hours: number (critical indicator)
+  refinish_labor_hours: number
+  mechanical_labor_hours: number
+  total_labor_hours: number (auto-calculate sum)
+  
+  // Frame/Structural Work (if applicable)
+  frame_pulling_required: boolean
+  frame_machine_hours: number (if pulled)
+  alignment_required: boolean
+  
+  // Components Damaged/Replaced
+  panels_replaced: PanelItem[] {
+    panel_name: string (e.g., "Rear Body Panel (Steel/HSS)")
+    panel_type: enum ("structural" | "cosmetic" | "bolt-on")
+    replaced_or_repaired: enum ("replaced" | "repaired")
+  }
+  
+  // Paint Work
+  painted_panels: string[] (list of panel names)
+  paint_type: enum ("factory_oem" | "aftermarket_quality" | "budget")
+  
+  // Parts Used
+  oem_parts_used: boolean
+  aftermarket_parts_used: boolean
+  aftermarket_parts_list: string (if true)
+  
+  // Photos
+  damage_photos: File[] (before repair)
+  repair_photos: File[] (after repair)
+  
+  // Upload Repair Estimate/Invoice
+  repair_estimate_pdf: File (required)
+}
+```
+
+### 1.6 Comparable Vehicles - Pre-Accident (User Input or Auto-Search)
+```typescript
+PreAccidentComps {
+  // User can either let system auto-search OR manually enter 3-5 comps
+  use_auto_search: boolean (default: true)
+  
+  // If auto_search = true, system searches based on:
+  auto_search_params: {
+    search_radius_miles: number (default: 100)
+    mileage_tolerance: number (default: 10000, ±10k miles)
+    min_comps: number (default: 3)
+    max_comps: number (default: 5)
+  }
+  
+  // If auto_search = false OR user wants to add manual comps:
+  manual_comps: ComparableVehicle[] (max 5) {
+    source: string (e.g., "autotrader.com", "dealer name")
+    listing_url: string (optional)
+    contact_phone: string (optional)
+    listing_status: enum ("active" | "sold" | "pending")
+    
+    vin: string (17 chars)
+    year: number
+    make: string
+    model: string
+    trim: string
+    mileage: number
+    accident_history: enum ("no_accidents" | "accident_reported")
+    
+    listing_price: number (USD)
+    
+    // Equipment differences vs subject vehicle
+    additional_equipment: EquipmentItem[] {
+      name: string
+      adjustment_value: number (+ if comp has it, subject doesn't)
+    }
+    missing_equipment: EquipmentItem[] {
+      name: string
+      adjustment_value: number (- if subject has it, comp doesn't)
+    }
+    
+    location: {
+      city: string
+      state: string
+      distance_from_subject: number (miles, auto-calculate if addresses provided)
+    }
+  }
+}
+```
+
+### 1.7 Comparable Vehicles - Post-Accident (Same structure as 1.6)
+```typescript
+PostAccidentComps {
+  // Same structure as PreAccidentComps
+  // BUT: accident_history MUST be "accident_reported" for all comps
+  // System automatically filters for "accident reported" vehicles
+  
+  use_auto_search: boolean (default: true)
+  auto_search_params: { ... } // same as above
+  manual_comps: ComparableVehicle[] (max 5) { ... }
+}
+```
+
+### 1.8 Appraiser Information (if professional appraiser)
+```typescript
+AppraiserInfo {
+  is_professional_appraiser: boolean
+  appraiser_name: string (if true)
+  appraiser_company: string
+  appraiser_license: string (optional)
+  appraiser_certifications: string[] (e.g., "USPAP Certified")
+  appraiser_signature: File (upload signature image)
+  
+  // Independence Statement (required for USPAP compliance)
+  financial_interest: boolean (default: false, must be false)
+  conflict_of_interest: boolean (default: false, must be false)
+}
+```
+
+---
+
+## SECTION 2: AUTO-GENERATED FIELDS (Computed Analysis)
+
+### 2.1 Vehicle Valuation Calculations
+```typescript
+// AUTO-CALCULATED based on comparable vehicles
+ValuationResults {
+  // Pre-Accident Fair Market Value
+  pre_accident_fmv: {
+    raw_comp_values: number[] (adjusted values from each pre-accident comp)
+    calculation_method: enum ("median" | "mean" | "weighted_average")
+    calculated_value: number (median of adjusted comp values)
+    confidence_range: {
+      low: number (10th percentile)
+      high: number (90th percentile)
+    }
+  }
+  
+  // Post-Repair Actual Cash Value
+  post_repair_acv: {
+    raw_comp_values: number[] (adjusted values from post-accident comps)
+    calculation_method: enum ("median" | "mean" | "weighted_average")
+    calculated_value: number (median of adjusted comp values)
+    confidence_range: {
+      low: number
+      high: number
+    }
+  }
+  
+  // DIMINISHED VALUE (The Money Shot)
+  diminished_value: {
+    calculated_amount: number (pre_accident_fmv - post_repair_acv)
+    percentage_of_pre_value: number ((DV / pre_FMV) * 100)
+    percentage_of_repair_cost: number ((DV / repair_cost) * 100)
+    
+    // Cross-check with repair-cost method
+    repair_cost_method_estimate: number (repair_cost * severity_coefficient)
+    variance_analysis: string (auto-generate if methods differ >20%)
+  }
+}
+```
+
+### 2.2 Damage Severity Classification (AUTO-DETERMINED)
+```typescript
+// SYSTEM AUTO-CLASSIFIES based on input data
+SeverityAnalysis {
+  severity_level: enum (
+    1 | // Minor: Cosmetic only, <10hrs labor, no structural
+    2 | // Moderate: Bolt-on panels, 10-20hrs, no frame work
+    3 | // Medium: Multiple panels, 20-35hrs, possible minor structural
+    4 | // Major: Structural damage, 35-60hrs, frame pulling
+    5   // Severe: Extensive structural, >60hrs, multiple frame components
+  )
+  
+  // AUTO-GENERATED LOGIC for severity_level:
+  // IF frame_pulling_required = true OR frame_labor_hours > 0 → severity ≥ 4
+  // IF structural_damage = true AND total_labor_hours > 35 → severity = 4
+  // IF total_labor_hours > 60 OR airbag_deployment = true + structural → severity = 5
+  // IF total_labor_hours 20-35 AND no frame work → severity = 3
+  // IF total_labor_hours 10-20 AND cosmetic only → severity = 2
+  // IF total_labor_hours < 10 → severity = 1
+  
+  severity_justification: string (auto-generate based on logic above)
+  
+  // NAAA Post-Repair Grade (AUTO-DOWNGRADE from pre-accident)
+  post_repair_naaa_grade: enum (
+    "excellent" |    // Only if severity ≤ 1 AND pre-grade was excellent
+    "good" |         // If severity ≤ 2 AND no structural
+    "average" |      // If severity = 3
+    "below_average" | // If severity = 4 (ANY structural work)
+    "rough"          // If severity = 5
+  )
+  
+  naaa_downgrade_reason: string (auto-generate explanation)
+}
+```
+
+### 2.3 Comparable Vehicle Adjustments (AUTO-CALCULATED)
+```typescript
+// For EACH comparable vehicle, system auto-calculates adjustments
+CompAdjustments {
+  base_listing_price: number
+  
+  adjustments: {
+    // Mileage Adjustment
+    mileage_adjustment: number (
+      // Industry standard: ~$0.10-0.15 per mile difference
+      // Formula: (subject_mileage - comp_mileage) * $0.12
+      // Positive if comp has MORE miles (increases comp value to match subject)
+      // Negative if comp has LESS miles (decreases comp value)
+    )
+    
+    // Equipment Adjustments
+    equipment_adjustments: EquipmentAdjustment[] {
+      item: string
+      adjustment_factor: number (80% of factory MSRP)
+      adjustment_value: number
+      direction: enum ("add" | "subtract")
+    }
+    total_equipment_adjustment: number (sum of above)
+    
+    // Trim Level Adjustment (if not exact match)
+    trim_adjustment: number (
+      // Based on MSRP difference between trims
+      // Only if trim is not exact match
+    )
+    
+    // Year Adjustment (if not exact match)
+    year_adjustment: number (
+      // ~5-10% depreciation per year for newer vehicles
+      // Only needed if comp year differs from subject
+    )
+    
+    // Condition Adjustment (standardize all comps to "Good")
+    condition_adjustment: number (
+      // Apply NAAA condition grade adjustments
+      // Excellent → Good: -5%
+      // Average → Good: +5%
+      // Below Average → Good: +10%
+    )
+    
+    total_adjustments: number (sum of all adjustments)
+    final_adjusted_value: number (base_price + total_adjustments)
+  }
+}
+```
+
+### 2.4 Market Stigma Analysis (AUTO-GENERATED TEXT)
+```typescript
+MarketStigmaAnalysis {
+  // AUTO-GENERATE based on damage severity and repair details
+  narrative: string (
+    // Example auto-generated text:
+    "Even with professional repairs completed to industry standards, vehicles 
+    with documented accident history face significant market resistance. 
+    Potential buyers express concerns about:
+    
+    - Structural integrity and long-term safety implications
+    - Possible hidden damage not visible during inspection
+    - Warranty coverage limitations from manufacturer
+    - Future mechanical reliability given the extent of repairs
+    - Insurance company reluctance to provide full coverage
+    - Resale difficulty when the next owner discovers the history
+    
+    These concerns are amplified for this vehicle due to [severity-specific details]:
+    - [IF frame_pulling_required]: Frame pulling operations, which permanently 
+      alter the vehicle's factory-original structural integrity
+    - [IF airbag_deployment]: Airbag deployment and replacement, raising questions 
+      about sensor accuracy and safety system reliability
+    - [IF panels_replaced includes 'structural']: Replacement of primary structural 
+      components originally welded at the factory
+    
+    Market data consistently shows that accident-history vehicles sell for 
+    [calculated_DV_percentage]% less than identical clean-history vehicles, 
+    even when repairs are completed by certified technicians using OEM parts."
+  )
+  
+  // CARFAX/AutoCheck Impact Statement
+  database_impact: string (
+    "This accident has been reported to vehicle history databases including 
+    CARFAX and AutoCheck, ensuring that any future buyer, dealer, or insurance 
+    company will immediately discover the damage history when running a VIN check. 
+    This permanent record creates an insurmountable barrier to achieving pre-accident 
+    market value, regardless of repair quality."
+  )
+}
+```
+
+### 2.5 Repair Analysis Narrative (AUTO-GENERATED)
+```typescript
+RepairAnalysisNarrative {
+  // AUTO-GENERATE detailed technical analysis based on repair data
+  overview: string (
+    "This report provides a comprehensive technical analysis of the repairs 
+    performed on a [year] [make] [model] [trim], VIN [vin], following a collision 
+    event. The total repair cost was $[repair_cost], representing approximately 
+    [repair_cost_percentage]% of the vehicle's estimated actual cash value 
+    (ACV of $[pre_accident_fmv]). The repair process required [total_labor_hours] 
+    total labor hours, segmented into [body_labor_hours] hours of body labor, 
+    [refinish_labor_hours] hours of refinish labor, and [frame_labor_hours] hours 
+    dedicated to frame labor."
+  )
+  
+  // Component-by-Component Analysis
+  component_analysis: string (
+    // AUTO-GENERATE based on panels_replaced array
+    // For each structural panel: explain why it matters
+    // For frame work: emphasize the implications
+    // For paint work: note color-matching challenges
+  )
+  
+  // Final Assessment
+  final_assessment: string (
+    "**Severity Classification:** Based on the total labor hours 
+    ([total_labor_hours] hours), the repair falls into the '[severity_text]' category. 
+    This classification is further solidified by the nature of the repairs, specifically 
+    [list structural components]. [IF frame_pulling]: Most critically, the explicit 
+    frame pulling operation confirms that the unibody structure was deformed and 
+    required specialized equipment and expertise to restore its dimensions, indicating 
+    a significant structural compromise. For these reasons, the damage is classified 
+    as **Severity Level [severity_level] – [severity_text]**.
+    
+    **NAAA Condition Grading:** The documentation of structural repair [IF applicable] 
+    means the vehicle's original factory structural integrity has been altered. 
+    According to industry-standard NAAA guidelines, any vehicle with a documented 
+    history of structural repairs, even if meticulously completed, cannot be rated 
+    higher than a specific tier. Consequently, this vehicle qualifies for a maximum 
+    of **NAAA Grade [post_repair_grade] – [grade_text]**, reflecting that its 
+    pre-accident, factory-original condition cannot be fully restored due to the 
+    inherent nature of structural work."
+  )
+}
+```
+
+### 2.6 Legal Citations & State-Specific Law (AUTO-INSERTED)
+```typescript
+LegalCitations {
+  // AUTO-DETECT state from owner address
+  applicable_state: string (from owner.address.state)
+  
+  // AUTO-INSERT appropriate statutes based on state
+  first_party_statute: string (
+    // IF state = "GA": O.C.G.A. § 33-4-6
+    // IF state = "NC": G.S. § 20-279.21(d)(1)
+    // ELSE: Generic tort law reference
+  )
+  
+  third_party_statute: string (
+    // IF state = "GA": O.C.G.A. § 33-4-7
+    // ELSE: Generic tort law reference
+  )
+  
+  valuation_methodology_citation: string (
+    "Canal Ins. Co. v. Tullis, 237 Ga. App. 515, 516-17 (1999): 
+    Establishes two acceptable methods for calculating diminished value:
+    (1) Difference between fair market value before and after collision
+    (2) Reasonable repair costs plus permanent impairment"
+  )
+  
+  // 17c Formula Warning (if applicable)
+  anti_17c_statement: string (
+    "[IF state = 'GA']: This appraisal explicitly rejects the so-called '17c formula' 
+    often used by insurance companies. The Georgia Department of Insurance Commissioner 
+    issued a directive in December 2008 stating that the Department has never endorsed 
+    any specific formula, including 17c, and insurers must consider all relevant 
+    information provided by the insured. The 17c methodology artificially caps 
+    diminished value at 10% of pre-accident value, double-penalizes for mileage, 
+    and has no scientific or legal basis. This appraisal uses the legally recognized 
+    comparable sales method."
+  )
+}
+```
+
+### 2.7 USPAP Compliance Statements (AUTO-INSERTED if professional appraiser)
+```typescript
+USPAPCompliance {
+  // Only include if is_professional_appraiser = true
+  certification_statement: string (
+    "In accordance with USPAP Standard 8-3, I certify that, to the best of my 
+    knowledge and belief:
+    
+    ✓ I have no bias with respect to any property that is the subject of this 
+      report or to the parties involved with this assignment.
+    ✓ My engagement in this assignment was not contingent upon developing or 
+      reporting predetermined results.
+    ✓ The statements of fact contained in this report are true and correct.
+    ✓ I have performed no services, as an appraiser or in any other capacity, 
+      regarding the property that is the subject of this report.
+    ✓ The reported analysis, opinions, and conclusions are limited only by the 
+      reported assumptions and limiting conditions, and represent my personal, 
+      impartial, and unbiased professional analysis, opinions, and conclusions.
+    ✓ I have no present or prospective interest in the property that is the 
+      subject of this report.
+    ✓ My compensation for completing this assignment is not contingent upon 
+      the reporting of a predetermined value or direction in value.
+    ✓ This report has been prepared based on actual comparable sales data, 
+      manufacturer documentation, and recognized national automotive industry 
+      valuation sources."
+  )
+}
+```
+
+### 2.8 Disclaimers & Limitations (AUTO-INSERTED)
+```typescript
+Disclaimers {
+  purpose_limitation: string (
+    "This appraisal provides an objective, independent determination of the 
+    diminished value resulting from a collision. It is intended solely for 
+    use in insurance claims, dispute resolution, or legal proceedings requiring 
+    documented proof of value loss. This report is NOT intended for:
+    - Repair cost estimation
+    - Resale price negotiation
+    - Loan underwriting or refinancing
+    - Vehicle purchase decisions"
+  )
+  
+  methodology_disclosure: string (
+    "The conclusions of this report are based on:
+    • Personal inspection of the vehicle's repairs [IF applicable]
+    • Recognized insurance industry metrics
+    • Repair records and documentation
+    • Market research using verified comparable vehicles
+    • Multiple authoritative auto pricing resources (NADA, KBB, Black Book, etc.)
+    
+    The valuation represents a professional opinion based on available data at 
+    the time of appraisal. Actual market transaction prices may vary."
+  )
+  
+  independence_statement: string (
+    "The appraiser/platform hereby asserts no present or prospective financial 
+    interest or ownership in any firm engaged in the purchase, sale, insurance, 
+    transport, repair, or restoration of motor vehicles. Compensation for this 
+    appraisal was received solely from the party who authorized the appraisal. 
+    No actual or potential conflict of interest exists in providing this appraisal."
+  )
+}
+```
+
+---
+
+## SECTION 3: REPORT GENERATION LOGIC
+
+### 3.1 Report Structure (Final PDF Output)
+```markdown
+# Diminished Value Appraisal Report
+
+## Cover Letter (Page 1)
+- Appraisal company letterhead
+- Date, claim number
+- Owner name
+- VIN, accident date
+- Professional introduction paragraph
+- **HIGHLIGHTED TOTAL DV AMOUNT**: $X,XXX
+- Brief explanation of DV concept
+- USPAP compliance statement
+- Signature block
+
+---
+
+## Purpose, Scope, and Intended Use (Page 2)
+- Purpose of Appraisal (auto-generated)
+- Scope of Appraisal (auto-generated)
+- Intended Use (auto-generated)
+
+---
+
+## Vehicle Information (Page 3)
+- Complete subject vehicle details (table format)
+- Standard equipment list
+- Optional equipment list
+- Pre-accident condition assessment (NAAA grading)
+- Photos of vehicle (if provided)
+
+---
+
+## Accident & Damage Summary (Page 4)
+- Accident details
+- Point of impact diagram (visual)
+- Repair facility information
+- Total repair cost
+- Labor hour breakdown
+- Frame/structural work performed
+- Components replaced/repaired (detailed table)
+- Before/after photos
+
+---
+
+## Comparable Vehicles - Pre-Accident FMV (Pages 5-6)
+- Introduction paragraph
+- Table of 3-5 comparable vehicles:
+  - Source, dealer contact, listing URL
+  - VIN, year, make, model, trim
+  - Mileage, accident history
+  - Base listing price
+  - Equipment adjustments (line-item breakdown)
+  - Mileage adjustment
+  - Final adjusted value
+- Average/median calculation methodology
+- **PRE-ACCIDENT FAIR MARKET VALUE: $XX,XXX**
+
+---
+
+## Comparable Vehicles - Post-Repair ACV (Pages 7-8)
+- Introduction paragraph (explaining stigma)
+- Table of 3-5 accident-history comparables (same format as above)
+- Average/median calculation methodology
+- **POST-REPAIR ACTUAL CASH VALUE: $XX,XXX**
+
+---
+
+## Valuation Analysis & Calculation (Page 9)
+- Side-by-side comparison table:
+  ```
+  Pre-Accident Fair Market Value:    $XX,XXX
+  Post-Repair Actual Cash Value:     $XX,XXX
+  ─────────────────────────────────────────
+  INHERENT DIMINISHED VALUE:         $X,XXX
+  
+  As Percentage of Pre-Value:        XX.X%
+  As Percentage of Repair Cost:      XX.X%
+  ```
+- Cross-check with repair-cost method
+- Variance analysis (if methods differ significantly)
+
+---
+
+## Damage Severity Analysis (Pages 10-11)
+- Auto-generated severity classification
+- Detailed component-by-component analysis
+- Frame/structural work explanation
+- Paint and refinishing discussion
+- **Final Severity Grade: Level X - [Text]**
+- **Post-Repair NAAA Grade: X - [Text]**
+- Justification narrative
+
+---
+
+## Market Stigma & Buyer Perception (Page 12)
+- Auto-generated narrative on market resistance
+- CARFAX/AutoCheck database impact
+- Buyer concerns specific to this damage type
+- Industry statistics on DV percentages
+
+---
+
+## Legal Citations & Methodology (Page 13)
+- State-specific DV law (if applicable)
+- Canal v. Tullis citation
+- Anti-17c formula statement (if GA)
+- USPAP compliance (if professional appraiser)
+- Methodology disclosure
+
+---
+
+## Disclaimers & Certifications (Page 14)
+- Purpose limitations
+- Independence statement
+- Methodology disclosure
+- Appraiser signature block (if applicable)
+
+---
+
+## Appendices (Pages 15+)
+- Full repair estimate/invoice (uploaded PDF)
+- Vehicle history report (if available)
+- Comparable vehicle listing screenshots (if URLs provided)
+- Additional photos
+```
+
+### 3.2 Auto-Generation Triggers
+```typescript
+// WHEN user clicks "Generate Report", system executes:
+
+1. Validate all required fields are complete
+2. IF use_auto_search = true:
+   - Execute web scraping for pre-accident comps
+   - Execute web scraping for post-accident comps
+   - Apply adjustment calculations to each comp
+3. Calculate pre_accident_fmv (median of adjusted comps)
+4. Calculate post_repair_acv (median of adjusted comps)
+5. Calculate diminished_value = pre_FMV - post_ACV
+6. Auto-classify severity_level based on repair data
+7. Auto-downgrade NAAA grade based on severity
+8. Generate all narrative text fields using templates + variable substitution
+9. Insert state-specific legal citations based on owner.address.state
+10. Compile all sections into professional PDF
+11. Attach uploaded documents as appendices
+12. Email PDF to user + save to dashboard
+```
+
+---
+
+## SECTION 4: CODING AGENT INSTRUCTIONS
+
+### 4.1 Database Schema (PostgreSQL via Neon)
+```sql
+-- Use Drizzle ORM for type-safe database access
+
+CREATE TABLE appraisals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id),
+  
+  -- Metadata
+  claim_number TEXT,
+  appraisal_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  accident_date DATE NOT NULL,
+  purpose TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'draft', -- draft | complete | sent
+  
+  -- Owner Info (JSONB for flexibility)
+  owner_info JSONB NOT NULL,
+  
+  -- Insurance Info
+  insurance_info JSONB,
+  
+  -- Subject Vehicle (JSONB for complex nested structure)
+  subject_vehicle JSONB NOT NULL,
+  
+  -- Accident Details
+  accident_details JSONB NOT NULL,
+  
+  -- Valuation Results (auto-calculated, stored for caching)
+  valuation_results JSONB,
+  
+  -- Severity Analysis (auto-generated)
+  severity_analysis JSONB,
+  
+  -- Appraiser Info (if applicable)
+  appraiser_info JSONB,
+  
+  -- File Attachments (store GCS URLs)
+  repair_estimate_url TEXT,
+  damage_photos JSONB, -- array of GCS URLs
+  repair_photos JSONB,
+  
+  -- Generated Report
+  report_pdf_url TEXT,
+  
+  -- Timestamps
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE comparable_vehicles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  appraisal_id UUID NOT NULL REFERENCES appraisals(id) ON DELETE CASCADE,
+  
+  comp_type TEXT NOT NULL, -- 'pre_accident' | 'post_accident'
+  source TEXT NOT NULL, -- 'auto_search' | 'manual_entry'
+  
+  -- Vehicle Details
+  vin TEXT NOT NULL,
+  year INTEGER NOT NULL,
+  make TEXT NOT NULL,
+  model TEXT NOT NULL,
+  trim TEXT NOT NULL,
+  mileage INTEGER NOT NULL,
+  accident_history TEXT NOT NULL, -- 'no_accidents' | 'accident_reported'
+  
+  -- Listing Info
+  listing_url TEXT,
+  listing_price NUMERIC(10, 2) NOT NULL,
+  dealer_name TEXT,
+  dealer_phone TEXT,
+  location_city TEXT,
+  location_state TEXT,
+  distance_miles INTEGER,
+  
+  -- Adjustments (JSONB for complex structure)
+  adjustments JSONB NOT NULL,
+  
+  -- Final Adjusted Value (calculated)
+  adjusted_value NUMERIC(10, 2) NOT NULL,
+  
+  -- Inclusion in calc
+  included_in_calculation BOOLEAN DEFAULT true,
+  
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_appraisals_user_id ON appraisals(user_id);
+CREATE INDEX idx_appraisals_status ON appraisals(status);
+CREATE INDEX idx_comp_vehicles_appraisal ON comparable_vehicles(appraisal_id);
+```
+
+### 4.2 Frontend Form Structure (React Multi-Step Wizard)
+```typescript
+// Step 1: Basic Info (Owner, Insurance, Appraisal Purpose)
+<Step1BasicInfo />
+
+// Step 2: Subject Vehicle Details (VIN decode, features, condition)
+<Step2VehicleDetails />
+
+// Step 3: Accident & Damage (repair details, photos, estimate upload)
+<Step3AccidentDetails />
+
+// Step 4: Pre-Accident Comparables (auto-search OR manual entry)
+<Step4PreAccidentComps 
+  autoSearch={true} 
+  onAutoSearchComplete={handleCompsFound}
+  onManualAdd={handleManualComp}
+/>
+
+// Step 5: Post-Accident Comparables (auto-search OR manual entry)
+<Step5PostAccidentComps 
+  autoSearch={true}
+  requireAccidentHistory={true}
+  onAutoSearchComplete={handleCompsFound}
+  onManualAdd={handleManualComp}
+/>
+
+// Step 6: Review & Calculate (show all inputs, trigger calculations)
+<Step6ReviewCalculate 
+  onCalculate={handleCalculateDV}
+  calculationResults={valuationResults}
+  severityAnalysis={severityAnalysis}
+/>
+
+// Step 7: Appraiser Info (optional, only if professional)
+<Step7AppraiserInfo isProfessional={isProfessionalAppraiser} />
+
+// Step 8: Generate Report
+<Step8GenerateReport 
+  onGenerate={handleGenerateReport}
+  reportStatus={reportGenerationStatus}
+  pdfUrl={generatedReportUrl}
+/>
+```
+
+### 4.3 Auto-Calculation Functions (Backend Logic)
+
+#### 4.3.1 Comparable Vehicle Adjustment Calculator
+```typescript
+// Function: calculateCompAdjustments()
+// Called for each comparable vehicle to determine adjusted value
+
+interface CompAdjustment {
+  mileage_adjustment: number;
+  equipment_adjustments: number;
+  trim_adjustment: number;
+  year_adjustment: number;
+  condition_adjustment: number;
+  total_adjustments: number;
+  adjusted_value: number;
+}
+
+function calculateCompAdjustments(
+  subjectVehicle: SubjectVehicle,
+  comp: ComparableVehicle
+): CompAdjustment {
+  
+  const adjustments: CompAdjustment = {
+    mileage_adjustment: 0,
+    equipment_adjustments: 0,
+    trim_adjustment: 0,
+    year_adjustment: 0,
+    condition_adjustment: 0,
+    total_adjustments: 0,
+    adjusted_value: comp.listing_price
+  };
+  
+  // 1. MILEAGE ADJUSTMENT
+  // Industry standard: $0.12 per mile difference
+  // Positive if comp has MORE miles (increases comp value to match subject)
+  const mileageDiff = comp.mileage - subjectVehicle.mileage_at_accident;
+  adjustments.mileage_adjustment = mileageDiff * -0.12; // Negative diff = positive adjustment
+  
+  // 2. EQUIPMENT ADJUSTMENTS
+  // Compare subject's optional equipment vs comp
+  let equipmentTotal = 0;
+  
+  // Subject has equipment that comp doesn't → SUBTRACT from comp
+  subjectVehicle.optional_equipment.forEach(item => {
+    if (!comp.equipment_list.includes(item.name)) {
+      equipmentTotal -= item.factory_price * 0.80; // 80% of MSRP
+    }
+  });
+  
+  // Comp has equipment that subject doesn't → ADD to comp
+  comp.additional_equipment.forEach(item => {
+    equipmentTotal += item.adjustment_value;
+  });
+  
+  adjustments.equipment_adjustments = equipmentTotal;
+  
+  // 3. TRIM ADJUSTMENT (only if not exact match)
+  if (subjectVehicle.trim !== comp.trim) {
+    // Use NADA/KBB data for trim MSRP differences
+    // For now, use estimated adjustment based on trim level
+    adjustments.trim_adjustment = calculateTrimDifference(
+      subjectVehicle.make,
+      subjectVehicle.model,
+      subjectVehicle.trim,
+      comp.trim
+    );
+  }
+  
+  // 4. YEAR ADJUSTMENT (if years differ)
+  if (subjectVehicle.year !== comp.year) {
+    const yearDiff = comp.year - subjectVehicle.year;
+    // ~7% depreciation per year for vehicles under 5 years old
+    adjustments.year_adjustment = comp.listing_price * (yearDiff * -0.07);
+  }
+  
+  // 5. CONDITION ADJUSTMENT
+  // Standardize all comps to "Good" condition for comparison
+  // Then adjust subject vehicle separately
+  const conditionMultipliers = {
+    'excellent': -0.05,  // Reduce comp value by 5% to match "good"
+    'good': 0,           // No adjustment needed
+    'average': 0.05,     // Increase comp value by 5% to match "good"
+    'below_average': 0.10,
+    'rough': 0.15
+  };
+  
+  if (comp.condition && comp.condition !== 'good') {
+    adjustments.condition_adjustment = 
+      comp.listing_price * conditionMultipliers[comp.condition];
+  }
+  
+  // TOTAL ADJUSTMENTS
+  adjustments.total_adjustments = 
+    adjustments.mileage_adjustment +
+    adjustments.equipment_adjustments +
+    adjustments.trim_adjustment +
+    adjustments.year_adjustment +
+    adjustments.condition_adjustment;
+  
+  // FINAL ADJUSTED VALUE
+  adjustments.adjusted_value = comp.listing_price + adjustments.total_adjustments;
+  
+  return adjustments;
+}
+```
+
+#### 4.3.2 Diminished Value Calculator
+```typescript
+// Function: calculateDiminishedValue()
+// Main calculation engine
+
+interface DVCalculationResult {
+  pre_accident_fmv: number;
+  post_repair_acv: number;
+  diminished_value: number;
+  dv_percentage_of_pre_value: number;
+  dv_percentage_of_repair_cost: number;
+  calculation_method: string;
+  confidence_range: {
+    low: number;
+    high: number;
+  };
+}
+
+function calculateDiminishedValue(
+  preAccidentComps: ComparableVehicle[],
+  postAccidentComps: ComparableVehicle[],
+  repairCost: number
+): DVCalculationResult {
+  
+  // Filter to only included comps
+  const includedPreComps = preAccidentComps.filter(c => c.included_in_calculation);
+  const includedPostComps = postAccidentComps.filter(c => c.included_in_calculation);
+  
+  // Calculate adjusted values for all comps
+  const preAdjustedValues = includedPreComps.map(c => c.adjusted_value);
+  const postAdjustedValues = includedPostComps.map(c => c.adjusted_value);
+  
+  // PRE-ACCIDENT FMV: Use MEDIAN (more resistant to outliers)
+  const preAccidentFMV = calculateMedian(preAdjustedValues);
+  
+  // POST-REPAIR ACV: Use MEDIAN
+  const postRepairACV = calculateMedian(postAdjustedValues);
+  
+  // DIMINISHED VALUE
+  const diminishedValue = preAccidentFMV - postRepairACV;
+  
+  // Calculate as percentages
+  const dvPercentageOfPreValue = (diminishedValue / preAccidentFMV) * 100;
+  const dvPercentageOfRepairCost = (diminishedValue / repairCost) * 100;
+  
+  // Confidence range (10th to 90th percentile)
+  const confidenceLow = calculatePercentile(preAdjustedValues, 10) - 
+                        calculatePercentile(postAdjustedValues, 90);
+  const confidenceHigh = calculatePercentile(preAdjustedValues, 90) - 
+                         calculatePercentile(postAdjustedValues, 10);
+  
+  return {
+    pre_accident_fmv: preAccidentFMV,
+    post_repair_acv: postRepairACV,
+    diminished_value: diminishedValue,
+    dv_percentage_of_pre_value: dvPercentageOfPreValue,
+    dv_percentage_of_repair_cost: dvPercentageOfRepairCost,
+    calculation_method: "Comparable Sales Method (Median)",
+    confidence_range: {
+      low: Math.max(0, confidenceLow),
+      high: confidenceHigh
+    }
+  };
+}
+
+// Helper: Calculate median
+function calculateMedian(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[mid - 1] + sorted[mid]) / 2
+    : sorted[mid];
+}
+
+// Helper: Calculate percentile
+function calculatePercentile(values: number[], percentile: number): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = (percentile / 100) * (sorted.length - 1);
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+  const weight = index - lower;
+  return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+}
+```
+
+#### 4.3.3 Damage Severity Classifier
+```typescript
+// Function: classifyDamageSeverity()
+// Auto-determines severity level 1-5 based on repair data
+
+interface SeverityClassification {
+  severity_level: 1 | 2 | 3 | 4 | 5;
+  severity_text: string;
+  justification: string;
+  post_repair_naaa_grade: string;
+  naaa_grade_explanation: string;
+}
+
+function classifyDamageSeverity(
+  accidentDetails: AccidentDetails,
+  subjectVehicle: SubjectVehicle
+): SeverityClassification {
+  
+  let severityLevel: 1 | 2 | 3 | 4 | 5 = 1;
+  let justification = "";
+  
+  const {
+    total_labor_hours,
+    frame_pulling_required,
+    frame_labor_hours,
+    structural_damage,
+    airbag_deployment,
+    panels_replaced
+  } = accidentDetails;
+  
+  // DECISION TREE LOGIC
+  
+  // LEVEL 5: SEVERE (Most restrictive conditions first)
+  if (
+    total_labor_hours > 60 ||
+    (airbag_deployment && structural_damage && frame_labor_hours > 5) ||
+    (frame_labor_hours > 10)
+  ) {
+    severityLevel = 5;
+    justification = `This repair is classified as SEVERE (Level 5) due to: ${
+      total_labor_hours > 60 ? `excessive total labor hours (${total_labor_hours}hrs)` : ''
+    }${
+      frame_labor_hours > 10 ? `, extensive frame work (${frame_labor_hours}hrs on frame machine)` : ''
+    }${
+      airbag_deployment && structural_damage ? ', airbag deployment combined with structural damage' : ''
+    }. This level of damage indicates catastrophic impact with multiple critical systems compromised.`;
+  }
+  
+  // LEVEL 4: MAJOR
+  else if (
+    frame_pulling_required ||
+    frame_labor_hours > 0 ||
+    (structural_damage && total_labor_hours > 35) ||
+    (airbag_deployment && total_labor_hours > 30)
+  ) {
+    severityLevel = 4;
+    justification = `This repair is classified as MAJOR (Level 4) due to: ${
+      frame_pulling_required ? 'documented frame pulling operations' : ''
+    }${
+      frame_labor_hours > 0 ? `, frame machine work (${frame_labor_hours}hrs)` : ''
+    }${
+      structural_damage ? ', replacement of primary structural components' : ''
+    }${
+      airbag_deployment ? ', airbag deployment indicating high-impact forces' : ''
+    }. The unibody structure was deformed and required specialized equipment to restore factory dimensions, permanently altering the vehicle's original structural integrity.`;
+  }
+  
+  // LEVEL 3: MEDIUM
+  else if (
+    total_labor_hours >= 20 && total_labor_hours <= 35 ||
+    (panels_replaced.some(p => p.panel_type === 'structural') && total_labor_hours > 15) ||
+    airbag_deployment
+  ) {
+    severityLevel = 3;
+    justification = `This repair is classified as MEDIUM (Level 3) due to: moderate total labor hours (${total_labor_hours}hrs)${
+      panels_replaced.filter(p => p.panel_type === 'structural').length > 0 
+        ? ', replacement of structural panels' 
+        : ''
+    }${
+      airbag_deployment ? ', airbag deployment' : ''
+    }. While no frame pulling was required, the extent of repairs and panel replacements indicates significant impact forces that may have affected adjacent components.`;
+  }
+  
+  // LEVEL 2: MODERATE
+  else if (
+    total_labor_hours >= 10 && total_labor_hours < 20 &&
+    !structural_damage &&
+    !frame_pulling_required
+  ) {
+    severityLevel = 2;
+    justification = `This repair is classified as MODERATE (Level 2) due to: limited labor hours (${total_labor_hours}hrs) with no structural or frame damage. Repairs were limited to bolt-on panels and cosmetic components. However, the vehicle's history now includes documented collision repairs, which will affect market perception.`;
+  }
+  
+  // LEVEL 1: MINOR
+  else {
+    severityLevel = 1;
+    justification = `This repair is classified as MINOR (Level 1) due to: minimal labor hours (${total_labor_hours}hrs) involving only cosmetic damage with no structural components affected. Despite professional repairs, the permanent collision history record will still impact resale value.`;
+  }
+  
+  // DETERMINE POST-REPAIR NAAA GRADE
+  let postRepairNaaaGrade = "";
+  let naaaExplanation = "";
+  
+  const preGrade = subjectVehicle.pre_accident_condition.overall_grade;
+  
+  if (severityLevel === 5) {
+    postRepairNaaaGrade = "1 - Rough";
+    naaaExplanation = "Severe structural damage and extensive repairs prevent this vehicle from achieving any grade higher than Rough (1), regardless of repair quality. The permanent alteration of factory-original structural integrity and the extent of component replacement fundamentally change the vehicle's condition classification.";
+  } else if (severityLevel === 4) {
+    postRepairNaaaGrade = "2 - Below Average";
+    naaaExplanation = "According to NAAA standards, any vehicle with documented structural repairs, frame pulling, or primary component replacement cannot be rated higher than Below Average (2), even when repairs are completed by certified technicians using OEM parts. The factory-original condition cannot be fully restored once structural work is performed.";
+  } else if (severityLevel === 3) {
+    postRepairNaaaGrade = "3 - Average";
+    naaaExplanation = "With moderate damage and multiple panel replacements, this vehicle can achieve a maximum grade of Average (3) post-repair. While no frame work was required, the extent of repairs prevents classification as Good or Excellent.";
+  } else if (severityLevel === 2) {
+    postRepairNaaaGrade = "4 - Good";
+    naaaExplanation = "Moderate cosmetic damage with professional repairs allows this vehicle to potentially achieve a Good (4) grade, provided all work was completed to industry standards and no repair-related defects are present.";
+  } else {
+    postRepairNaaaGrade = preGrade === 'excellent' ? "4 - Good" : "3 - Average";
+    naaaExplanation = "Minor cosmetic damage with proper repairs may allow this vehicle to achieve Good (4) or Average (3) condition, though it can never return to Excellent grade once collision history is documented.";
+  }
+  
+  const severityTextMap = {
+    1: "Minor",
+    2: "Moderate", 
+    3: "Medium",
+    4: "Major",
+    5: "Severe"
+  };
+  
+  return {
+    severity_level: severityLevel,
+    severity_text: severityTextMap[severityLevel],
+    justification: justification,
+    post_repair_naaa_grade: postRepairNaaaGrade,
+    naaa_grade_explanation: naaaExplanation
+  };
+}
+```
+
+#### 4.3.4 Narrative Text Generator
+```typescript
+// Function: generateRepairAnalysisNarrative()
+// Creates detailed technical analysis of repairs
+
+function generateRepairAnalysisNarrative(
+  subjectVehicle: SubjectVehicle,
+  accidentDetails: AccidentDetails,
+  severityAnalysis: SeverityClassification
+): string {
+  
+  const {
+    year, make, model, trim, vin, engine, transmission
+  } = subjectVehicle;
+  
+  const {
+    total_repair_cost,
+    total_labor_hours,
+    body_labor_hours,
+    refinish_labor_hours,
+    frame_labor_hours,
+    panels_replaced,
+    repair_facility
+  } = accidentDetails;
+  
+  const repairCostPercentage = (
+    (total_repair_cost / accidentDetails.estimated_pre_accident_value) * 100
+  ).toFixed(2);
+  
+  // OVERVIEW PARAGRAPH
+  let narrative = `This report provides a comprehensive technical analysis of the repairs performed on a ${year} ${make} ${model} ${trim}, ${engine} ${transmission}, VIN ${vin}, following a collision event detailed in the estimate from ${repair_facility}. The total repair cost was ${total_repair_cost.toLocaleString()}, representing approximately ${repairCostPercentage}% of the vehicle's estimated actual cash value. The repair process required a significant ${total_labor_hours} total labor hours, segmented into ${body_labor_hours} hours of body labor, ${refinish_labor_hours} hours of refinish labor${frame_labor_hours > 0 ? `, and ${frame_labor_hours} hours dedicated to frame labor` : ''}.\n\n`;
+  
+  // IN-DEPTH COMPONENT ANALYSIS
+  narrative += `### In-Depth Analysis of Repaired & Replaced Components\n\n`;
+  narrative += `A detailed review of the repair estimate reveals several critical procedures that define the severity and scope of this repair. These are not merely cosmetic fixes; they involve ${
+    severityAnalysis.severity_level >= 4 ? 'core structural elements and' : ''
+  } substantial bodywork.\n\n`;
+  
+  // Analyze each replaced panel
+  const structuralPanels = panels_replaced.filter(p => p.panel_type === 'structural');
+  const cosmeticPanels = panels_replaced.filter(p => p.panel_type === 'cosmetic');
+  
+  if (structuralPanels.length > 0) {
+    narrative += `**Structural Components Affected:**\n`;
+    structuralPanels.forEach(panel => {
+      narrative += `* **${panel.panel_name}:** This is a critical safety component forming part of the vehicle's ${
+        panel.panel_name.includes('Frame') || panel.panel_name.includes('Rail') 
+          ? 'load-bearing structure' 
+          : 'structural integrity'
+      }. ${
+        panel.replaced_or_repaired === 'replaced' 
+          ? `Complete replacement was required, indicating damage beyond repair capabilities. This panel was originally welded at the factory and cannot be restored to factory specifications once cut and replaced.`
+          : `Repairs to this component required specialized techniques and equipment to restore dimensional accuracy.`
+      }\n`;
+    });
+    narrative += `\n`;
+  }
+  
+  if (frame_labor_hours > 0) {
+    narrative += `**Frame Work:** The estimate includes ${frame_labor_hours} hours of frame labor, which unequivocally signifies that the vehicle's ${
+      subjectVehicle.body_style.includes('SUV') || subjectVehicle.body_style.includes('Truck')
+        ? 'body-on-frame or unibody'
+        : 'unibody'
+    } structure was deformed and required specialized frame machine procedures to pull it back into factory specifications. This operation is a clear indicator of structural damage beyond cosmetic panels. The frame pulling process, while necessary, permanently alters the metallurgical properties of the steel at the pull points, introduces stress concentrations, and can never fully restore the original factory dimensions and strength characteristics.\n\n`;
+  }
+  
+  if (accidentDetails.alignment_required) {
+    narrative += `**Suspension/Alignment Impact:** The requirement for a complete alignment procedure suggests that the structural deformation or repair process impacted the vehicle's suspension mounting points or chassis geometry. This indicates forces were transmitted through the structure sufficient to alter wheel positioning, a concerning sign of structural compromise.\n\n`;
+  }
+  
+  if (cosmeticPanels.length > 0) {
+    narrative += `**Cosmetic and Bolt-On Components:** The following components were also replaced:\n`;
+    cosmeticPanels.forEach(panel => {
+      narrative += `* ${panel.panel_name}\n`;
+    });
+    narrative += `\nWhile these are bolt-on parts, their replacement indicates the extent of impact forces and contributes to the vehicle's permanent repair history.\n\n`;
+  }
+  
+  if (refinish_labor_hours > 0) {
+    narrative += `**Paint and Refinishing:** A substantial ${refinish_labor_hours} hours of refinish labor and paint materials were required, indicating the extensive area of the vehicle that needed repainting after the repairs. Factory paint is applied using specialized processes (e-coat, primer, base coat, clear coat) in controlled environments that cannot be replicated in a body shop setting. Color matching challenges are inevitable, particularly for:
+* Metallic and pearl finishes that require precise spray techniques
+* Multiple panels where slight variations become visible under different lighting
+* Aged original paint vs. fresh repaired areas
+* Blending edges where new paint meets original finish
+
+Even the highest quality refinishing work will show observable differences under close inspection or certain lighting conditions, which knowledgeable buyers will detect and discount accordingly.\n\n`;
+  }
+  
+  if (accidentDetails.airbag_deployment) {
+    narrative += `**Airbag System:** The deployment and subsequent replacement of airbags is a critical factor in diminished value. Modern vehicles use sophisticated crash sensors and control modules that, once deployed, must be completely replaced. While replacement restores functionality, buyers remain concerned about:
+* Sensor calibration accuracy after structural repairs
+* Potential damage to related safety systems
+* Insurance company reluctance to fully cover vehicles with airbag deployment history
+* Warranty coverage limitations from manufacturers
+
+The airbag deployment itself indicates impact forces exceeding specific thresholds, suggesting hidden damage may exist in components not visible during routine inspection.\n\n`;
+  }
+  
+  // FINAL ASSESSMENT
+  narrative += `### Final Assessment & Grading\n\n`;
+  narrative += `${severityAnalysis.justification}\n\n`;
+  narrative += `**Post-Repair NAAA Grading:** ${severityAnalysis.naaa_grade_explanation}`;
+  
+  return narrative;
+}
+```
+
+#### 4.3.5 Market Stigma Narrative Generator
+```typescript
+// Function: generateMarketStigmaAnalysis()
+// Creates compelling narrative about buyer resistance
+
+function generateMarketStigmaAnalysis(
+  valuationResults: DVCalculationResult,
+  severityAnalysis: SeverityClassification,
+  accidentDetails: AccidentDetails
+): string {
+  
+  let narrative = `Even with professional repairs completed to industry standards, vehicles with documented accident history face significant market resistance. Research consistently demonstrates that consumers exhibit strong negative bias toward accident-repaired vehicles, with `;
+  
+  // Insert industry statistics
+  narrative += `survey data showing that 55% of potential buyers state they would NEVER purchase a vehicle with accident history, regardless of price discount, and 81% would only consider such a vehicle with a SUBSTANTIAL price reduction.\n\n`;
+  
+  narrative += `Potential buyers express legitimate concerns about:\n\n`;
+  narrative += `* **Structural Integrity and Safety:** Questions about whether the vehicle can protect occupants as effectively as an never-damaged vehicle in a subsequent collision. Frame repairs, even when completed correctly, introduce uncertainties about crush zones, crumple characteristics, and load distribution during impacts.\n\n`;
+  
+  narrative += `* **Hidden Damage:** Professional inspections can identify obvious repair work, but cannot definitively rule out damage to sensors, wiring harnesses, mechanical components, or subtle structural misalignments that may not manifest until years after the accident.\n\n`;
+  
+  narrative += `* **Future Mechanical Reliability:** Accident forces can damage components not included in the visible repair scope. Transmission mounts, engine mounts, suspension bushings, steering components, and exhaust systems may suffer premature wear due to impact forces transmitted through the structure.\n\n`;
+  
+  narrative += `* **Warranty Coverage Limitations:** Manufacturers frequently void or limit warranties on vehicles with structural repairs. Extended warranty companies routinely exclude accident-related failures or charge substantial premiums for coverage.\n\n`;
+  
+  narrative += `* **Insurance Coverage and Rates:** Some insurance carriers charge higher premiums for vehicles with accident history or decline comprehensive/collision coverage altogether. Others may apply "reduced value" clauses in subsequent claims.\n\n`;
+  
+  narrative += `* **Resale Difficulty:** The next buyer will face the same disclosure requirements and value reduction, making the vehicle difficult to sell without accepting an even lower price. This creates a compounding depreciation effect.\n\n`;
+  
+  // Severity-specific concerns
+  if (severityAnalysis.severity_level >= 4) {
+    narrative += `**These concerns are significantly amplified for this vehicle due to the major structural repairs documented:**\n\n`;
+    
+    if (accidentDetails.frame_pulling_required) {
+      narrative += `* **Frame Pulling Operations:** The unibody structure required machine pulling to restore dimensions, permanently altering the factory-original structural integrity. The pulling process stretches metal beyond its elastic limit, changing its strength and failure characteristics. No amount of skilled labor can restore the original metallurgical properties of steel that has been plastically deformed.\n\n`;
+    }
+    
+    if (accidentDetails.airbag_deployment) {
+      narrative += `* **Airbag Deployment History:** Buyers associate airbag deployment with severe impacts and express particular concern about sensor accuracy and safety system reliability following structural repairs. The deployment threshold indicates impact forces sufficient to cause damage well beyond the visible repair area.\n\n`;
+    }
+    
+    if (accidentDetails.panels_replaced.some(p => p.panel_type === 'structural')) {
+      narrative += `* **Replacement of Primary Structural Components:** The removal and replacement of factory-welded structural panels cannot replicate the original spot-welding techniques, e-coat corrosion protection, and structural adhesives applied during original manufacture. MIG welding used in body shops, while adequate for strength, creates different heat-affected zones and does not provide the same long-term durability.\n\n`;
+    }
+  }
+  
+  // CARFAX/AutoCheck Impact
+  narrative += `**Permanent Database Records:**\n\n`;
+  narrative += `This accident has been reported to vehicle history databases including CARFAX, AutoCheck, and the National Motor Vehicle Title Information System (NMVTIS). These reports are permanent and cannot be removed. Any future buyer, dealer, insurance company, or lending institution will immediately discover the damage history when conducting a routine VIN check. This creates an insurmountable barrier to achieving pre-accident market value, regardless of repair quality. `;
+  narrative += `Dealerships typically refuse to accept accident-history vehicles for trade-in, or offer deeply discounted values knowing they will face challenges reselling them. Private party sales require full disclosure in most states, and failure to disclose can result in legal liability.\n\n`;
+  
+  // Quantitative Market Data
+  narrative += `**Market Data Analysis:**\n\n`;
+  narrative += `The comparable vehicle analysis conducted for this appraisal demonstrates the real-world market impact of accident history. Clean-history vehicles of identical year, make, model, and trim are currently listed for sale with a median asking price of ${valuationResults.pre_accident_fmv.toLocaleString()}. `;
+  narrative += `Identical vehicles WITH disclosed accident history are listed at a median price of ${valuationResults.post_repair_acv.toLocaleString()}, `;
+  narrative += `representing a ${valuationResults.dv_percentage_of_pre_value.toFixed(1)}% reduction in market value. This ${valuationResults.dv_percentage_of_pre_value.toFixed(1)}% stigma is consistent across multiple markets and listing sources, confirming that buyers consistently discount accident-history vehicles by this amount.\n\n`;
+  
+  narrative += `This market-based diminished value of ${valuationResults.diminished_value.toLocaleString()} is not speculative—it reflects documented, real-world asking prices for comparable vehicles currently available for sale. The value loss is permanent and will persist throughout the vehicle's remaining useful life.`;
+  
+  return narrative;
+}
+```
+
+### 4.4 Web Scraping Logic for Comparable Vehicles
+
+```typescript
+// Function: searchComparableVehicles()
+// Automated web scraping for clean-history and accident-history comps
+
+interface CompSearchParams {
+  year: number;
+  make: string;
+  model: string;
+  trim: string;
+  mileage: number;
+  mileage_tolerance: number;
+  search_radius_miles: number;
+  zip_code: string;
+  accident_history_required: boolean; // true for post-accident search
+  min_results: number;
+  max_results: number;
+}
+
+async function searchComparableVehicles(
+  params: CompSearchParams
+): Promise<ComparableVehicle[]> {
+  
+  const results: ComparableVehicle[] = [];
+  
+  // SOURCES TO SCRAPE (in priority order)
+  const sources = [
+    'autotrader.com',
+    'cars.com',
+    'cargurus.com',
+    'carfax.com/used-cars',
+    // Add dealer-specific sites as needed
+  ];
+  
+  for (const source of sources) {
+    if (results.length >= params.max_results) break;
+    
+    try {
+      // Build search URL based on source
+      const searchUrl = buildSearchUrl(source, params);
+      
+      // Use ScraperAPI or Bright Data to fetch results
+      const html = await fetchWithProxy(searchUrl);
+      
+      // Parse HTML to extract vehicle listings
+      const listings = parseListings(html, source);
+      
+      // Filter listings by criteria
+      const filtered = listings.filter(listing => {
+        // Mileage within tolerance
+        const mileageMatch = Math.abs(listing.mileage - params.mileage) <= params.mileage_tolerance;
+        
+        // Accident history match
+        const accidentMatch = params.accident_history_required 
+          ? listing.accident_history === 'accident_reported'
+          : listing.accident_history === 'no_accidents';
+        
+        // Year/make/model/trim match (exact or very close)
+        const vehicleMatch = (
+          listing.year === params.year &&
+          listing.make.toLowerCase() === params.make.toLowerCase() &&
+          listing.model.toLowerCase() === params.model.toLowerCase() &&
+          (listing.trim.toLowerCase().includes(params.trim.toLowerCase()) ||
+           params.trim.toLowerCase().includes(listing.trim.toLowerCase()))
+        );
+        
+        return mileageMatch && accidentMatch && vehicleMatch;
+      });
+      
+      results.push(...filtered);
+      
+      // Add delay between requests to avoid rate limiting
+      await sleep(2000);
+      
+    } catch (error) {
+      console.error(`Error scraping ${source}:`, error);
+      // Continue to next source
+    }
+  }
+  
+  // If insufficient results, expand search radius or mileage tolerance
+  if (results.length < params.min_results) {
+    console.warn(`Only found ${results.length} comps, expanding search...`);
+    // Recursive call with relaxed params
+    return searchComparableVehicles({
+      ...params,
+      mileage_tolerance: params.mileage_tolerance * 1.5,
+      search_radius_miles: params.search_radius_miles * 1.5
+    });
+  }
+  
+  // Return top results sorted by relevance
+  return results
+    .sort((a, b) => {
+      // Prioritize closer mileage match
+      const aMileageDiff = Math.abs(a.mileage - params.mileage);
+      const bMileageDiff = Math.abs(b.mileage - params.mileage);
+      return aMileageDiff - bMileageDiff;
+    })
+    .slice(0, params.max_results);
+}
+
+// Helper: Build search URL for each source
+function buildSearchUrl(source: string, params: CompSearchParams): string {
+  const baseUrls = {
+    'autotrader.com': 'https://www.autotrader.com/cars-for-sale/all-cars',
+    'cars.com': 'https://www.cars.com/shopping/results',
+    'cargurus.com': 'https://www.cargurus.com/Cars/inventorylisting/viewDetailsFilterViewInventoryListing.action',
+    'carfax.com/used-cars': 'https://www.carfax.com/Used-Cars'
+  };
+  
+  // Build query parameters based on source's URL structure
+  // Each source has different parameter naming conventions
+  let url = baseUrls[source] || '';
+  
+  switch(source) {
+    case 'autotrader.com':
+      url += `?makeCodeList=${params.make.toUpperCase()}`;
+      url += `&modelCodeList=${params.model.replace(/\s/g, '')}`;
+      url += `&zip=${params.zip_code}`;
+      url += `&searchRadius=${params.search_radius_miles}`;
+      url += `&startYear=${params.year}&endYear=${params.year}`;
+      url += `&maxMileage=${params.mileage + params.mileage_tolerance}`;
+      if (params.accident_history_required) {
+        // Autotrader doesn't have direct accident filter, 
+        // must check in individual listings
+      }
+      break;
+      
+    case 'cars.com':
+      url += `/?stock_type=used`;
+      url += `&makes[]=${params.make}`;
+      url += `&models[]=${params.model}`;
+      url += `&zip=${params.zip_code}`;
+      url += `&maximum_distance=${params.search_radius_miles}`;
+      url += `&year_min=${params.year}&year_max=${params.year}`;
+      url += `&maximum_mileage=${params.mileage + params.mileage_tolerance}`;
+      break;
+      
+    case 'cargurus.com':
+      url += `?zip=${params.zip_code}`;
+      url += `&distance=${params.search_radius_miles}`;
+      url += `&minYear=${params.year}&maxYear=${params.year}`;
+      url += `&maxMileage=${params.mileage + params.mileage_tolerance}`;
+      break;
+      
+    // Add more sources as needed
+  }
+  
+  return url;
+}
+
+// Helper: Parse listings from HTML
+function parseListings(html: string, source: string): any[] {
+  // Use cheerio or similar HTML parser
+  // Extract vehicle data based on source's HTML structure
+  // This is source-specific and requires updating if sites change structure
+  
+  // Example structure (simplified):
+  return []; // Return array of parsed vehicle objects
+}
+```
+
+### 4.5 PDF Report Generation
+
+```typescript
+// Function: generatePDFReport()
+// Creates professional PDF using Puppeteer or jsPDF
+
+import puppeteer from 'puppeteer';
+
+async function generatePDFReport(
+  appraisalData: CompleteAppraisalData
+): Promise<string> {
+  
+  // Generate HTML template with all data
+  const htmlContent = generateReportHTML(appraisalData);
+  
+  // Launch headless browser
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
+  
+  const page = await browser.newPage();
+  
+  // Set page content
+  await page.setContent(htmlContent, {
+    waitUntil: 'networkidle0'
+  });
+  
+  // Generate PDF with professional formatting
+  const pdfBuffer = await page.pdf({
+    format: 'Letter', // 8.5" x 11"
+    printBackground: true,
+    margin: {
+      top: '0.75in',
+      right: '0.75in',
+      bottom: '0.75in',
+      left: '0.75in'
+    },
+    displayHeaderFooter: true,
+    headerTemplate: `
+      <div style="width: 100%; font-size: 10px; text-align: center; color: #6b7280;">
+        <span>ClaimShield DV - Diminished Value Appraisal Report</span>
+      </div>
+    `,
+    footerTemplate: `
+      <div style="width: 100%; font-size: 10px; text-align: center; color: #6b7280; padding: 10px;">
+        <span class="pageNumber"></span> of <span class="totalPages"></span>
+      </div>
+    `
+  });
+  
+  await browser.close();
+  
+  // Upload PDF to Google Cloud Storage
+  const fileName = `appraisal-${appraisalData.id}-${Date.now()}.pdf`;
+  const gcsUrl = await uploadToGCS(pdfBuffer, fileName);
+  
+  return gcsUrl;
+}
+
+// Function: generateReportHTML()
+// Creates complete HTML document for PDF conversion
+function generateReportHTML(data: CompleteAppraisalData): string {
+  
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      font-size: 11pt;
+      line-height: 1.6;
+      color: #1f2937;
+    }
+    
+    .page {
+      page-break-after: always;
+    }
+    
+    .cover-page {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      text-align: center;
+      background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+      color: white;
+    }
+    
+    .cover-logo {
+      width: 200px;
+      margin-bottom: 40px;
+    }
+    
+    .cover-title {
+      font-size: 36pt;
+      font-weight: 800;
+      margin-bottom: 20px;
+    }
+    
+    .cover-subtitle {
+      font-size: 18pt;
+      margin-bottom: 60px;
+      opacity: 0.9;
+    }
+    
+    .cover-details {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 30px;
+      border-radius: 8px;
+      backdrop-filter: blur(10px);
+    }
+    
+    .cover-detail-row {
+      margin: 10px 0;
+      font-size: 14pt;
+    }
+    
+    .dv-amount-box {
+      background: #10b981;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 30px 0;
+    }
+    
+    .dv-label {
+      font-size: 14pt;
+      opacity: 0.9;
+      margin-bottom: 5px;
+    }
+    
+    .dv-amount {
+      font-size: 42pt;
+      font-weight: 800;
+    }
+    
+    .section {
+      margin: 40px 0;
+    }
+    
+    h1 {
+      font-size: 24pt;
+      color: #1e40af;
+      margin-bottom: 20px;
+      border-bottom: 3px solid #2563eb;
+      padding-bottom: 10px;
+    }
+    
+    h2 {
+      font-size: 18pt;
+      color: #374151;
+      margin: 30px 0 15px;
+    }
+    
+    h3 {
+      font-size: 14pt;
+      color: #4b5563;
+      margin: 20px 0 10px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    
+    th {
+      background: #f3f4f6;
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      border: 1px solid #e5e7eb;
+    }
+    
+    td {
+      padding: 10px 12px;
+      border: 1px solid #e5e7eb;
+    }
+    
+    .highlight-row {
+      background: #fef3c7;
+      font-weight: 600;
+    }
+    
+    .total-row {
+      background: #dbeafe;
+      font-weight: 700;
+      font-size: 12pt;
+    }
+    
+    .info-box {
+      background: #f3f4f6;
+      padding: 15px;
+      border-left: 4px solid #2563eb;
+      margin: 20px 0;
+    }
+    
+    .warning-box {
+      background: #fef3c7;
+      padding: 15px;
+      border-left: 4px solid #f59e0b;
+      margin: 20px 0;
+    }
+    
+    .signature-block {
+      margin-top: 60px;
+      border-top: 2px solid #e5e7eb;
+      padding-top: 20px;
+    }
+    
+    .signature-line {
+      border-bottom: 1px solid #000;
+      width: 300px;
+      margin: 40px 0 10px;
+    }
+    
+    ul {
+      margin: 10px 0 10px 30px;
+    }
+    
+    li {
+      margin: 8px 0;
+    }
+    
+    .comp-card {
+      border: 1px solid #e5e7eb;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    
+    .comp-header {
+      font-weight: 600;
+      color: #2563eb;
+      margin-bottom: 10px;
+    }
+    
+    .adjustment-table {
+      font-size: 10pt;
+    }
+  </style>
+</head>
+<body>
+
+<!-- COVER PAGE -->
+<div class="page cover-page">
+  <div class="cover-title">ClaimShield DV</div>
+  <div class="cover-subtitle">Diminished Value Appraisal Report</div>
+  
+  <div class="cover-details">
+    <div class="cover-detail-row"><strong>Vehicle:</strong> ${data.vehicle.year} ${data.vehicle.make} ${data.vehicle.model}</div>
+    <div class="cover-detail-row"><strong>VIN:</strong> ${data.vehicle.vin}</div>
+    <div class="cover-detail-row"><strong>Owner:</strong> ${data.owner.full_name}</div>
+    <div class="cover-detail-row"><strong>Accident Date:</strong> ${formatDate(data.accident_date)}</div>
+    <div class="cover-detail-row"><strong>Report Date:</strong> ${formatDate(data.appraisal_date)}</div>
+  </div>
+  
+  <div class="dv-amount-box">
+    <div class="dv-label">Total Diminished Value</div>
+    <div class="dv-amount">${data.valuation.diminished_value.toLocaleString()}</div>
+  </div>
+</div>
+
+<!-- COVER LETTER -->
+<div class="page">
+  <div style="text-align: center; margin-bottom: 40px;">
+    <h2 style="color: #2563eb; border: none;">ClaimShield DV</h2>
+    <div style="font-size: 10pt; color: #6b7280;">
+      Professional Vehicle Valuation & Appraisal Services<br>
+      Email: support@claimshield-dv.com | Phone: (XXX) XXX-XXXX
+    </div>
+  </div>
+  
+  <div style="margin: 40px 0;">
+    <strong>Date:</strong> ${formatDate(data.appraisal_date)}<br>
+    ${data.insurance.claim_number ? `<strong>Claim Number:</strong> ${data.insurance.claim_number}<br>` : ''}
+    <strong>Owner:</strong> ${data.owner.full_name}<br>
+    <strong>Vehicle Identification Number (VIN):</strong> ${data.vehicle.vin}<br>
+    <strong>Accident Date:</strong> ${formatDate(data.accident_date)}
+  </div>
+  
+  <p><strong>To Whom It May Concern:</strong></p>
+  
+  <p style="margin: 20px 0;">
+    This letter accompanies the enclosed Diminished Value Appraisal Report prepared by ClaimShield DV, 
+    an independent vehicle appraisal platform. The purpose of this appraisal is to provide an objective, 
+    data-driven opinion of the reduction in market value sustained by the subject vehicle as a result of 
+    the reported collision.
+  </p>
+  
+  <p style="margin: 20px 0;">
+    This appraisal has been conducted in accordance with the Uniform Standards of Professional Appraisal 
+    Practice (USPAP) and is supported by a detailed analysis of verified market data. The valuation process 
+    utilizes comparable vehicles of the same year, make, model, and trim as the subject vehicle, with 
+    appropriate adjustments for mileage, options, and equipment to ensure precision and consistency. 
+    Incorporating repair-severity classifications and verified market behavior, the analysis provides a 
+    reliable quantification of the loss in value.
+  </p>
+  
+  <div class="info-box">
+    <div style="font-size: 14pt; margin-bottom: 10px;">
+      <strong>Based on the comprehensive analysis contained in the attached report, the calculated 
+      diminished value for the subject vehicle is:</strong>
+    </div>
+    <div style="font-size: 28pt; font-weight: 800; color: #2563eb; text-align: center; margin: 20px 0;">
+      ${data.valuation.diminished_value.toLocaleString()}
+    </div>
+  </div>
+  
+  <p style="margin: 20px 0;">
+    This valuation represents the difference between the vehicle's fair market value prior to the incident 
+    and its post-repair market value with full disclosure of its damage history. It accounts for both 
+    measurable depreciation and the inherent market stigma associated with collision repairs.
+  </p>
+  
+  <p style="margin: 20px 0;">
+    Please note that ClaimShield DV maintains full independence and has no financial interest in the 
+    outcome of any related insurance claim, litigation, or settlement. Should additional documentation or 
+    expert testimony be required, certified appraisers are available under separate agreement.
+  </p>
+  
+  <p style="margin: 40px 0 20px;">Thank you for your attention to this matter.</p>
+  
+  <p><strong>Respectfully,</strong></p>
+  <p style="margin-top: 40px;"><strong>ClaimShield DV</strong><br>Independent Vehicle Appraisal</p>
+</div>
+
+<!-- PURPOSE, SCOPE, AND INTENDED USE -->
+<div class="page">
+  <h1>1. Purpose, Scope, and Intended Use</h1>
+  
+  <div class="section">
+    <h2>Purpose of the Appraisal</h2>
+    <p>
+      This appraisal provides an objective, independent determination of the diminished value of the 
+      subject vehicle resulting from a collision. Diminished value represents the measurable loss in 
+      fair market value after professional repairs, compared to the vehicle's pre-loss condition.
+    </p>
+    <p style="margin-top: 15px;">
+      Even when restored, vehicles with accident history typically face lower market value due to:
+    </p>
+    <ul>
+      <li>Structural concerns about integrity and safety systems</li>
+      <li>Mechanical uncertainty regarding future reliability</li>
+      <li>Buyer perception and stigma that reduce demand</li>
+    </ul>
+    <p style="margin-top: 15px;">
+      These factors influence real-world resale prices. This report, prepared in compliance with USPAP 
+      standards, supports insurance claims, dispute resolution, or legal proceedings requiring documented 
+      proof of value loss. It is not intended for repair estimates, resale pricing, or loan underwriting.
+    </p>
+  </div>
+  
+  <div class="section">
+    <h2>Scope of the Appraisal</h2>
+    <p>
+      The appraisal measures the difference between the vehicle's fair market value before and after 
+      the incident. Analysis includes:
+    </p>
+    <ul>
+      <li>Verification of VIN, year, make, model, mileage, and condition</li>
+      <li>Review of repair documentation and damage photos</li>
+      <li>Comparison to similar vehicles using multiple market sources</li>
+      <li>Market-based adjustments for mileage, options, and condition</li>
+    </ul>
+    <p style="margin-top: 15px;">
+      Only credible, relevant data are considered to form a defensible opinion of diminished value 
+      using accepted industry methods as established in Canal Insurance Co. v. Tullis (1999).
+    </p>
+  </div>
+  
+  <div class="section">
+    <h2>Intended Use</h2>
+    <p>
+      This report is for the client and their authorized representatives to support insurance or legal 
+      claims related to loss in value. It is not for resale, trade-in, or loan purposes without written 
+      authorization.
+    </p>
+  </div>
+</div>
+
+<!-- VEHICLE INFORMATION -->
+<div class="page">
+  <h1>2. Subject Vehicle Information</h1>
+  
+  <table>
+    <tr>
+      <th colspan="2" style="background: #2563eb; color: white;">Vehicle Details</th>
+    </tr>
+    <tr><td><strong>VIN</strong></td><td>${data.vehicle.vin}</td></tr>
+    <tr><td><strong>Year</strong></td><td>${data.vehicle.year}</td></tr>
+    <tr><td><strong>Make</strong></td><td>${data.vehicle.make}</td></tr>
+    <tr><td><strong>Model</strong></td><td>${data.vehicle.model}</td></tr>
+    <tr><td><strong>Trim</strong></td><td>${data.vehicle.trim}</td></tr>
+    <tr><td><strong>Body Style</strong></td><td>${data.vehicle.body_style}</td></tr>
+    <tr><td><strong>Engine</strong></td><td>${data.vehicle.engine}</td></tr>
+    <tr><td><strong>Transmission</strong></td><td>${data.vehicle.transmission}</td></tr>
+    <tr><td><strong>Exterior Color</strong></td><td>${data.vehicle.exterior_color}</td></tr>
+    <tr><td><strong>Interior Color</strong></td><td>${data.vehicle.interior_color}</td></tr>
+    <tr><td><strong>Mileage at Accident</strong></td><td>${data.vehicle.mileage_at_accident.toLocaleString()} miles</td></tr>
+  </table>
+  
+  <h2>Optional Equipment</h2>
+  <table>
+    <tr>
+      <th>Equipment Item</th>
+      <th style="text-align: right;">Factory MSRP</th>
+    </tr>
+    ${data.vehicle.optional_equipment.map(item => `
+    <tr>
+      <td>${item.name}</td>
+      <td style="text-align: right;">${item.factory_price.toLocaleString()}</td>
+    </tr>
+    `).join('')}
+  </table>
+  
+  <h2>Pre-Accident Condition Assessment</h2>
+  <table>
+    <tr>
+      <th>Component</th>
+      <th>Condition</th>
+    </tr>
+    <tr><td><strong>Overall NAAA Grade</strong></td><td>${data.vehicle.pre_accident_condition.overall_grade}</td></tr>
+    <tr><td>Mechanical</td><td>${data.vehicle.pre_accident_condition.mechanical_condition}</td></tr>
+    <tr><td>Tires</td><td>${data.vehicle.pre_accident_condition.tire_condition}</td></tr>
+    <tr><td>Paint</td><td>${data.vehicle.pre_accident_condition.paint_condition}</td></tr>
+    <tr><td>Body</td><td>${data.vehicle.pre_accident_condition.body_condition}</td></tr>
+    <tr><td>Glass</td><td>${data.vehicle.pre_accident_condition.glass_condition}</td></tr>
+    <tr><td>Interior</td><td>${data.vehicle.pre_accident_condition.interior_condition}</td></tr>
+  </table>
+  
+  ${data.vehicle.pre_accident_condition.maintenance_notes ? `
+  <div class="info-box">
+    <strong>Maintenance Notes:</strong><br>
+    ${data.vehicle.pre_accident_condition.maintenance_notes}
+  </div>
+  ` : ''}
+</div>
+
+<!-- ACCIDENT & DAMAGE SUMMARY -->
+<div class="page">
+  <h1>3. Accident & Damage Summary</h1>
+  
+  <table>
+    <tr>
+      <th colspan="2" style="background: #2563eb; color: white;">Accident Details</th>
+    </tr>
+    <tr><td><strong>Accident Date</strong></td><td>${formatDate(data.accident_date)}</td></tr>
+    <tr><td><strong>Loss Type</strong></td><td>${data.accident.loss_type}</td></tr>
+    <tr><td><strong>Point of Impact</strong></td><td>${data.accident.point_of_impact}</td></tr>
+    <tr><td><strong>Repair Facility</strong></td><td>${data.accident.repair_facility}</td></tr>
+    <tr><td><strong>Total Repair Cost</strong></td><td>${data.accident.total_repair_cost.toLocaleString()}</td></tr>
+  </table>
+  
+  <h2>Labor Breakdown</h2>
+  <table>
+    <tr>
+      <th>Labor Type</th>
+      <th style="text-align: right;">Hours</th>
+    </tr>
+    <tr><td>Body Labor</td><td style="text-align: right;">${data.accident.body_labor_hours}</td></tr>
+    <tr><td>Frame Labor</td><td style="text-align: right;">${data.accident.frame_labor_hours}</td></tr>
+    <tr><td>Refinish Labor</td><td style="text-align: right;">${data.accident.refinish_labor_hours}</td></tr>
+    <tr><td>Mechanical Labor</td><td style="text-align: right;">${data.accident.mechanical_labor_hours || 0}</td></tr>
+    <tr class="total-row">
+      <td><strong>Total Labor Hours</strong></td>
+      <td style="text-align: right;"><strong>${data.accident.total_labor_hours}</strong></td>
+    </tr>
+  </table>
+  
+  <h2>Critical Damage Indicators</h2>
+  <table>
+    <tr>
+      <th>Indicator</th>
+      <th style="text-align: center;">Status</th>
+    </tr>
+    <tr>
+      <td>Structural Damage</td>
+      <td style="text-align: center;">${data.accident.structural_damage ? '✓ YES' : 'NO'}</td>
+    </tr>
+    <tr>
+      <td>Frame Damage</td>
+      <td style="text-align: center;">${data.accident.frame_damage ? '✓ YES' : 'NO'}</td>
+    </tr>
+    <tr>
+      <td>Frame Pulling Required</td>
+      <td style="text-align: center;">${data.accident.frame_pulling_required ? '✓ YES' : 'NO'}</td>
+    </tr>
+    <tr>
+      <td>Airbag Deployment</td>
+      <td style="text-align: center;">${data.accident.airbag_deployment ? '✓ YES' : 'NO'}</td>
+    </tr>
+    <tr>
+      <td>Alignment Required</td>
+      <td style="text-align: center;">${data.accident.alignment_required ? '✓ YES' : 'NO'}</td>
+    </tr>
+  </table>
+  
+  <h2>Components Replaced/Repaired</h2>
+  <table>
+    <tr>
+      <th>Component Name</th>
+      <th style="text-align: center;">Type</th>
+      <th style="text-align: center;">Action</th>
+    </tr>
+    ${data.accident.panels_replaced.map(panel => `
+    <tr${panel.panel_type === 'structural' ? ' class="highlight-row"' : ''}>
+      <td>${panel.panel_name}</td>
+      <td style="text-align: center;">${panel.panel_type}</td>
+      <td style="text-align: center;">${panel.replaced_or_repaired}</td>
+    </tr>
+    `).join('')}
+  </table>
+  
+  ${data.accident.frame_pulling_required ? `
+  <div class="warning-box">
+    <strong>⚠ STRUCTURAL WORK PERFORMED:</strong><br>
+    This vehicle required frame pulling operations (${data.accident.frame_machine_hours} hours on frame machine), 
+    indicating the unibody structure was deformed beyond repair tolerances. This permanently alters the vehicle's 
+    factory-original structural integrity and is a primary driver of diminished value.
+  </div>
+  ` : ''}
+</div>
+
+${generateComparableVehiclesHTML(data.pre_accident_comps, 'Pre-Accident Fair Market Value', false)}
+${generateComparableVehiclesHTML(data.post_accident_comps, 'Post-Repair Actual Cash Value', true)}
+
+<!-- VALUATION ANALYSIS -->
+<div class="page">
+  <h1>4. Valuation Analysis & Calculation</h1>
+  
+  <h2>Comparable Sales Method Results</h2>
+  
+  <table style="font-size: 14pt;">
+    <tr>
+      <th>Valuation Component</th>
+      <th style="text-align: right;">Amount</th>
+    </tr>
+    <tr>
+      <td><strong>Pre-Accident Fair Market Value</strong></td>
+      <td style="text-align: right;"><strong>${data.valuation.pre_accident_fmv.toLocaleString()}</strong></td>
+    </tr>
+    <tr style="font-size: 10pt; color: #6b7280;">
+      <td colspan="2" style="padding-left: 30px;">
+        Based on median of ${data.pre_accident_comps.length} comparable clean-history vehicles
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Post-Repair Actual Cash Value</strong></td>
+      <td style="text-align: right;"><strong>${data.valuation.post_repair_acv.toLocaleString()}</strong></td>
+    </tr>
+    <tr style="font-size: 10pt; color: #6b7280;">
+      <td colspan="2" style="padding-left: 30px;">
+        Based on median of ${data.post_accident_comps.length} comparable accident-history vehicles
+      </td>
+    </tr>
+    <tr style="height: 10px;"><td colspan="2"></td></tr>
+    <tr class="total-row" style="font-size: 16pt;">
+      <td><strong>INHERENT DIMINISHED VALUE</strong></td>
+      <td style="text-align: right;"><strong>${data.valuation.diminished_value.toLocaleString()}</strong></td>
+    </tr>
+  </table>
+  
+  <div style="margin: 30px 0;">
+    <h3>Diminished Value as Percentage Metrics</h3>
+    <table>
+      <tr>
+        <td>As Percentage of Pre-Accident Value:</td>
+        <td style="text-align: right; font-weight: 600;">${data.valuation.dv_percentage_of_pre_value.toFixed(2)}%</td>
+      </tr>
+      <tr>
+        <td>As Percentage of Repair Cost:</td>
+        <td style="text-align: right; font-weight: 600;">${data.valuation.dv_percentage_of_repair_cost.toFixed(2)}%</td>
+      </tr>
+    </table>
+  </div>
+  
+  <div class="info-box">
+    <strong>Calculation Methodology:</strong><br>
+    This valuation strictly adheres to the legally-recognized comparable sales method established in 
+    <em>Canal Insurance Co. v. Tullis</em>, 237 Ga. App. 515 (1999). The calculation represents the 
+    difference between the fair market value of the vehicle before the collision and its value after 
+    professional repairs with full disclosure of accident history.
+  </div>
+  
+  ${data.state === 'GA' ? `
+  <div class="warning-box">
+    <strong>⚠ GEORGIA INSURANCE COMPANY NOTICE:</strong><br>
+    This appraisal explicitly rejects the so-called "17c formula" often used by insurance companies. 
+    The Georgia Department of Insurance Commissioner issued a directive in December 2008 stating that 
+    the Department has never endorsed any specific formula, including 17c, and that insurers must 
+    consider all relevant information provided by the insured. The 17c methodology artificially caps 
+    diminished value, double-penalizes for mileage, and has no scientific or legal basis.
+  </div>
+  ` : ''}
+</div>
+
+<!-- DAMAGE SEVERITY ANALYSIS -->
+<div class="page">
+  <h1>5. Damage Severity Analysis</h1>
+  
+  ${data.severity.repair_analysis_narrative}
+  
+  <div style="margin: 40px 0; padding: 20px; background: #fef3c7; border: 3px solid #f59e0b;">
+    <div style="font-size: 16pt; font-weight: 700; color: #92400e; margin-bottom: 10px;">
+      FINAL SEVERITY CLASSIFICATION
+    </div>
+    <div style="font-size: 24pt; font-weight: 800; color: #92400e;">
+      LEVEL ${data.severity.severity_level} - ${data.severity.severity_text.toUpperCase()}
+    </div>
+    <div style="margin-top: 15px; font-size: 12pt;">
+      <strong>Post-Repair NAAA Grade:</strong> ${data.severity.post_repair_naaa_grade}
+    </div>
+  </div>
+</div>
+
+<!-- MARKET STIGMA ANALYSIS -->
+<div class="page">
+  <h1>6. Market Stigma & Buyer Perception Analysis</h1>
+  
+  ${data.market_stigma_narrative}
+</div>
+
+<!-- LEGAL CITATIONS -->
+<div class="page">
+  <h1>7. Legal Citations & Methodology</h1>
+  
+  <h2>Applicable Law</h2>
+  
+  ${generateStateCitations(data.state)}
+  
+  <h2>Valuation Methodology</h2>
+  <p>
+    This appraisal employs the <strong>Comparable Sales Method</strong>, one of two legally recognized 
+    methodologies established in <em>Canal Insurance Co. v. Tullis</em>, 237 Ga. App. 515, 516-17 (1999):
+  </p>
+  <ol style="margin: 15px 0 15px 30px;">
+    <li>The difference between the fair market value of the vehicle before and after the collision; OR</li>
+    <li>The reasonable costs of repair, together with hire on the vehicle while rendered incapable of use 
+        and the value of any additional permanent impairment, provided that the aggregate of such amounts 
+        does not exceed the fair market value before the collision.</li>
+  </ol>
+  <p>
+    This report utilizes the first method, supported by verified market data from multiple sources including 
+    actual dealer listings, classified advertisements, and vehicle history databases. All comparable vehicles 
+    were selected based on strict criteria: identical or near-identical year, make, model, trim, and mileage 
+    within ±${data.search_params.mileage_tolerance.toLocaleString()} miles of the subject vehicle.
+  </p>
+  
+  <div class="info-box">
+    <strong>Independence Statement:</strong><br>
+    ClaimShield DV maintains complete independence and has no financial interest in the outcome of any 
+    insurance claim, litigation, or settlement related to this appraisal. Compensation for this appraisal 
+    was received solely from the party who authorized the appraisal, with no contingency based on the 
+    calculated diminished value amount.
+  </div>
+</div>
+
+<!-- DISCLAIMERS & CERTIFICATIONS -->
+<div class="page">
+  <h1>8. Disclaimers & Certifications</h1>
+  
+  <h2>Purpose Limitations</h2>
+  <p>
+    This appraisal provides an objective, independent determination of the diminished value resulting from 
+    a collision. It is intended solely for use in insurance claims, dispute resolution, or legal proceedings 
+    requiring documented proof of value loss. This report is <strong>NOT</strong> intended for:
+  </p>
+  <ul>
+    <li>Repair cost estimation or negotiation with body shops</li>
+    <li>Resale price negotiation with buyers or dealers</li>
+    <li>Loan underwriting, refinancing, or collateral valuation</li>
+    <li>Vehicle purchase decisions or pre-purchase inspections</li>
+    <li>Tax assessment or charitable donation valuation</li>
+  </ul>
+  
+  <h2>Methodology Disclosure</h2>
+  <p>The conclusions of this report are based on:</p>
+  <ul>
+    <li>Review of repair documentation and damage photographs</li>
+    <li>Recognized insurance industry metrics and severity classifications</li>
+    <li>Market research using verified comparable vehicles from multiple sources</li>
+    <li>Authoritative automotive pricing resources (NADA, KBB, Black Book, dealer listings)</li>
+    <li>Industry-standard adjustment factors for mileage, equipment, and condition</li>
+  </ul>
+  <p style="margin-top: 15px;">
+    The valuation represents a professional opinion based on available data at the time of appraisal. 
+    Actual market transaction prices may vary based on negotiation skills, market timing, local demand, 
+    and individual buyer preferences.
+  </p>
+  
+  <h2>Data Sources & Reliability</h2>
+  <p>
+    Comparable vehicle data was sourced from publicly available listings verified at the time of research. 
+    While every effort was made to ensure accuracy, listing prices may change, vehicles may be sold, or 
+    listings may be removed without notice. The analysis reflects market conditions as of the appraisal date.
+  </p>
+  
+  ${data.appraiser.is_professional_appraiser ? `
+  <h2>USPAP Compliance Certification</h2>
+  <p>
+    In accordance with the Uniform Standards of Professional Appraisal Practice (USPAP) Standard 8-3, 
+    the undersigned appraiser certifies that, to the best of their knowledge and belief:
+  </p>
+  <ul style="list-style: none; padding-left: 0;">
+    <li>✓ I have no bias with respect to any property that is the subject of this report or to the 
+        parties involved with this assignment.</li>
+    <li>✓ My engagement in this assignment was not contingent upon developing or reporting predetermined results.</li>
+    <li>✓ The statements of fact contained in this report are true and correct.</li>
+    <li>✓ I have performed no services, as an appraiser or in any other capacity, regarding the property 
+        that is the subject of this report.</li>
+    <li>✓ The reported analysis, opinions, and conclusions are limited only by the reported assumptions and 
+        limiting conditions, and represent my personal, impartial, and unbiased professional analysis, 
+        opinions, and conclusions.</li>
+    <li>✓ I have no present or prospective interest in the property that is the subject of this report.</li>
+    <li>✓ My compensation for completing this assignment is not contingent upon the reporting of a 
+        predetermined value or direction in value.</li>
+    <li>✓ This report has been prepared based on actual comparable sales data, manufacturer documentation, 
+        and recognized national automotive industry valuation sources.</li>
+  </ul>
+  
+  <div class="signature-block">
+    <div style="margin-top: 60px;">
+      <div class="signature-line"></div>
+      <div><strong>${data.appraiser.appraiser_name}</strong></div>
+      <div>${data.appraiser.appraiser_company}</div>
+      ${data.appraiser.appraiser_license ? `<div>License: ${data.appraiser.appraiser_license}</div>` : ''}
+      <div>Date: ${formatDate(data.appraisal_date)}</div>
+    </div>
+  </div>
+  ` : `
+  <div class="signature-block">
+    <div style="margin-top: 60px;">
+      <div><strong>ClaimShield DV</strong></div>
+      <div>Independent Vehicle Appraisal Platform</div>
+      <div>Date: ${formatDate(data.appraisal_date)}</div>
+    </div>
+  </div>
+  `}
+</div>
+
+<!-- APPENDICES -->
+${data.repair_estimate_pdf ? `
+<div class="page">
+  <h1>Appendix A: Repair Estimate Documentation</h1>
+  <p style="margin: 20px 0;">
+    Complete repair estimate/invoice from ${data.accident.repair_facility} is included on the following pages.
+  </p>
+</div>
+` : ''}
+
+</body>
+</html>
+  `;
+}
+
+// Helper: Generate comparable vehicles HTML section
+function generateComparableVehiclesHTML(
+  comps: ComparableVehicle[], 
+  title: string, 
+  isPostAccident: boolean
+): string {
+  return `
+<div class="page">
+  <h1>${title}</h1>
+  
+  <p style="margin: 20px 0;">
+    The following ${comps.length} comparable vehicles were identified through market research of ${
+      isPostAccident ? 'accident-reported' : 'clean-history'
+    } vehicles currently listed for sale. Each comparable vehicle matches the subject vehicle in year, 
+    make, model, and trim, with appropriate adjustments applied for mileage, equipment differences, 
+    and other factors to ensure accurate comparison.
+  </p>
+  
+  ${comps.map((comp, index) => `
+  <div class="comp-card">
+    <div class="comp-header">Comparable Vehicle #${index + 1}</div>
+    
+    <table style="margin: 10px 0;">
+      <tr>
+        <td style="width: 40%;"><strong>Source:</strong></td>
+        <td>${comp.dealer_name || comp.source}</td>
+      </tr>
+      ${comp.dealer_phone ? `
+      <tr>
+        <td><strong>Contact:</strong></td>
+        <td>${comp.dealer_phone}</td>
+      </tr>
+      ` : ''}
+      ${comp.listing_url ? `
+      <tr>
+        <td><strong>Listing URL:</strong></td>
+        <td style="font-size: 9pt; word-break: break-all;">${comp.listing_url}</td>
+      </tr>
+      ` : ''}
+      <tr>
+        <td><strong>Status:</strong></td>
+        <td>Active</td>
+      </tr>
+    </table>
+    
+    <table style="margin: 10px 0;" class="adjustment-table">
+      <tr>
+        <th style="width: 40%;">Vehicle Details</th>
+        <th style="width: 60%;">Value</th>
+      </tr>
+      <tr><td>VIN</td><td>${comp.vin}</td></tr>
+      <tr><td>Year</td><td>${comp.year}</td></tr>
+      <tr><td>Make</td><td>${comp.make}</td></tr>
+      <tr><td>Model</td><td>${comp.model}</td></tr>
+      <tr><td>Trim</td><td>${comp.trim}</td></tr>
+      <tr><td>Mileage</td><td>${comp.mileage.toLocaleString()} miles</td></tr>
+      <tr><td>Accident History</td><td>${comp.accident_history === 'no_accidents' ? 'No Accidents' : 'Accident Reported'}</td></tr>
+      <tr class="highlight-row">
+        <td><strong>Listing Price</strong></td>
+        <td><strong>${comp.listing_price.toLocaleString()}</strong></td>
+      </tr>
+    </table>
+    
+    <div style="margin: 15px 0;"><strong>Adjustments Applied:</strong></div>
+    <table class="adjustment-table">
+      <tr>
+        <th style="width: 60%;">Adjustment Type</th>
+        <th style="width: 20%; text-align: right;">Factor</th>
+        <th style="width: 20%; text-align: right;">Amount</th>
+      </tr>
+      ${comp.adjustments.equipment_adjustments.map(adj => `
+      <tr>
+        <td>${adj.item}</td>
+        <td style="text-align: right;">${adj.adjustment_factor > 0 ? '+' : ''}${(adj.adjustment_factor * 100).toFixed(0)}%</td>
+        <td style="text-align: right;">${adj.adjustment_value >= 0 ? '+' : ''}${Math.abs(adj.adjustment_value).toLocaleString()}</td>
+      </tr>
+      `).join('')}
+      <tr>
+        <td>Mileage Adjustment</td>
+        <td style="text-align: right;">
+          ${comp.mileage > comp.subject_mileage ? 'Higher' : 'Lower'}
+        </td>
+        <td style="text-align: right;">
+          ${comp.adjustments.mileage_adjustment >= 0 ? '+' : ''}${Math.abs(comp.adjustments.mileage_adjustment).toLocaleString()}
+        </td>
+      </tr>
+      ${comp.adjustments.trim_adjustment !== 0 ? `
+      <tr>
+        <td>Trim Level Adjustment</td>
+        <td style="text-align: right;">—</td>
+        <td style="text-align: right;">
+          ${comp.adjustments.trim_adjustment >= 0 ? '+' : ''}${Math.abs(comp.adjustments.trim_adjustment).toLocaleString()}
+        </td>
+      </tr>
+      ` : ''}
+      ${comp.adjustments.year_adjustment !== 0 ? `
+      <tr>
+        <td>Model Year Adjustment</td>
+        <td style="text-align: right;">—</td>
+        <td style="text-align: right;">
+          ${comp.adjustments.year_adjustment >= 0 ? '+' : ''}${Math.abs(comp.adjustments.year_adjustment).toLocaleString()}
+        </td>
+      </tr>
+      ` : ''}
+      <tr class="total-row">
+        <td colspan="2"><strong>Final Adjusted Value</strong></td>
+        <td style="text-align: right;"><strong>${comp.adjusted_value.toLocaleString()}</strong></td>
+      </tr>
+    </table>
+  </div>
+  ${(index + 1) % 2 === 0 && index < comps.length - 1 ? '<div style="page-break-after: always;"></div>' : ''}
+  `).join('')}
+  
+  <div style="margin: 30px 0; padding: 20px; background: #dbeafe; border-left: 4px solid #2563eb;">
+    <div style="font-size: 14pt; font-weight: 700; margin-bottom: 10px;">
+      ${title} Calculation
+    </div>
+    <div style="font-size: 11pt; margin: 10px 0;">
+      <strong>Calculation Method:</strong> Median of adjusted comparable values
+    </div>
+    <div style="font-size: 11pt;">
+      <strong>Adjusted Values:</strong> 
+      ${comps.map(c => `${c.adjusted_value.toLocaleString()}`).join(', ')}
+    </div>
+    <div style="font-size: 18pt; font-weight: 800; color: #2563eb; margin-top: 15px;">
+      ${title}: ${calculateMedian(comps.map(c => c.adjusted_value)).toLocaleString()}
+    </div>
+  </div>
+</div>
+  `;
+}
+
+// Helper: Generate state-specific legal citations
+function generateStateCitations(state: string): string {
+  const citations = {
+    'GA': `
+      <div class="info-box">
+        <strong>Georgia Diminished Value Law:</strong>
+        <p style="margin: 10px 0;">
+          <strong>First-Party Claims (O.C.G.A. § 33-4-6):</strong> Georgia law requires insurance companies 
+          to evaluate all first-party physical damage claims for diminished value and adopt a suitable 
+          methodology for doing so. Insurers who refuse payment in bad faith may be liable for up to 50% 
+          of the liability or $5,000 (whichever is greater), plus reasonable attorney fees. 
+          <em>State Farm Mut. Auto Ins. Co. v. Mabry</em>, 274 Ga. 498 (2001).
+        </p>
+        <p style="margin: 10px 0;">
+          <strong>Third-Party Claims (O.C.G.A. § 33-4-7):</strong> Insurance companies issuing motor vehicle 
+          liability policies have an affirmative duty to adjust property losses fairly and promptly, including 
+          diminished value. Bad faith handling may result in penalties of up to 50% of liability or $5,000 
+          (whichever is greater), plus attorney fees.
+        </p>
+        <p style="margin: 10px 0;">
+          <strong>Georgia Insurance Commissioner Directive (December 2008):</strong> The Georgia Department 
+          of Insurance has never endorsed any specific formula for calculating diminished value, including 
+          the "17c formula." Insurers must consider all relevant information provided by the insured when 
+          evaluating diminished value claims.
+        </p>
+      </div>
+    `,
+    'NC': `
+      <div class="info-box">
+        <strong>North Carolina Diminished Value Law:</strong>
+        <p style="margin: 10px 0;">
+          <strong>Appraisal Process (N.C. Gen. Stat. § 20-279.21(d)(1)):</strong> When the insured and 
+          insurer disagree on diminished value by more than $2,000 or 25% of the vehicle's fair market 
+          value, each party shall select an independent appraiser. If they still cannot agree, a third 
+          appraiser renders a final and binding verdict.
+        </p>
+        <p style="margin: 10px 0;">
+          North Carolina courts recognize diminished value claims in both first-party and third-party 
+          contexts, with the burden of proof resting on the claimant to demonstrate actual loss in market value.
+        </p>
+      </div>
+    `,
+    'default': `
+      <div class="info-box">
+        <strong>General Tort Law Principles:</strong>
+        <p style="margin: 10px 0;">
+          Under general tort law, a claimant is entitled to be made whole following damage to their property. 
+          This includes compensation for the difference between the property's value before and after the loss, 
+          even when repairs are completed. Many states recognize diminished value claims in third-party contexts, 
+          with some variation in first-party coverage requirements.
+        </p>
+        <p style="margin: 10px 0;">
+          The Restatement of Torts § 928 provides that damages for harm to chattels include compensation for 
+          the difference in value before and after the harm, or the reasonable cost of repairs plus any 
+          permanent impairment in value.
+        </p>
+      </div>
+    `
+  };
+  
+  return citations[state] || citations['default'];
+}
+
+// Helper: Format date
+function formatDate(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+}
+
+```
+
+---
+
+## SECTION 5: DEPLOYMENT & INFRASTRUCTURE
+
+### 5.1 Environment Variables (.env)
+```bash
+# Database
+DATABASE_URL="postgresql://user:pass@endpoint.neon.tech/claimshield_dv?sslmode=require"
+
+# Firebase/GCP
+FIREBASE_API_KEY="..."
+FIREBASE_AUTH_DOMAIN="..."
+FIREBASE_PROJECT_ID="..."
+GCS_BUCKET_NAME="claimshield-dv-uploads"
+GCS_SERVICE_ACCOUNT_KEY="..." # JSON service account key
+
+# Web Scraping
+SCRAPER_API_KEY="..." # ScraperAPI or Bright Data key
+WEB_SCRAPING_ENABLED="true"
+
+# VIN Decoder API
+VIN_DECODER_API_KEY="..." # NHTSA or paid service
+
+# Payment Processing
+STRIPE_SECRET_KEY="..."
+STRIPE_PUBLISHABLE_KEY="..."
+STRIPE_WEBHOOK_SECRET="..."
+
+# Email Service
+SENDGRID_API_KEY="..." # For sending reports via email
+
+# Application
+NODE_ENV="production"
+NEXT_PUBLIC_APP_URL="https://claimshield-dv.com"
+```
+
+### 5.2 Deployment Architecture (GCP/Firebase)
+```yaml
+# Cloud Functions (Serverless)
+functions/
+  - generateReport (HTTP trigger)
+    - Receives appraisal data
+    - Generates PDF
+    - Uploads to GCS
+    - Sends email
+    - Returns download URL
+    
+  - scrapeComparables (HTTP trigger)
+    - Receives search params
+    - Scrapes vehicle listings
+    - Returns parsed results
+    
+  - processRepairEstimate (HTTP trigger)
+    - Receives PDF upload
+    - Extracts text/data
+    - Parses repair details
+    - Returns structured data
+
+# Cloud Storage Buckets
+buckets/
+  - claimshield-dv-uploads (repair estimates, photos)
+  - claimshield-dv-reports (generated PDF reports)
+
+# Cloud Run (Container for PDF generation)
+  - Puppeteer container with Chrome
+  - Auto-scales based on demand
+  - 2GB memory, 2 vCPU
+
+# Frontend Hosting
+  - Firebase Hosting or Vercel
+  - CDN distribution
+  - SSL/HTTPS enabled
+```
+
+### 5.3 CI/CD Pipeline (GitHub Actions)
+```yaml
+name: Deploy ClaimShield DV
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: npm test
+      
+      - name: Build frontend
+        run: npm run build
+      
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
+          channelId: live
+      
+      - name: Deploy Cloud Functions
+        run: |
+          cd functions
+          npm ci
+          firebase deploy --only functions
+```
+
+---
+
+## SECTION 6: TESTING STRATEGY
+
+### 6.1 Unit Tests (Jest)
+```typescript
+// Test DV calculation accuracy
+describe('calculateDiminishedValue', () => {
+  it('should calculate correct DV from comparable vehicles', () => {
+    const preComps = [
+      { adjusted_value: 32000 },
+      { adjusted_value: 31500 },
+      { adjusted_value: 32500 }
+    ];
+    const postComps = [
+      { adjusted_value: 24000 },
+      { adjusted_value: 23500 },
+      { adjusted_value: 24500 }
+    ];
+    
+    const result = calculateDiminishedValue(preComps, postComps, 5000);
+    
+    expect(result.pre_accident_fmv).toBe(32000); // Median
+    expect(result.post_repair_acv).toBe(24000); // Median
+    expect(result.diminished_value).toBe(8000);
+    expect(result.dv_percentage_of_pre_value).toBeCloseTo(25, 1);
+  });
+});
+
+// Test severity classification
+describe('classifyDamageSeverity', () => {
+  it('should classify as Major (Level 4) when frame pulling required', () => {
+    const accidentDetails = {
+      total_labor_hours: 40,
+      frame_pulling_required: true,
+      frame_labor_hours: 5,
+      structural_damage: true,
+      airbag_deployment: false
+    };
+    
+    const result = classifyDamageSeverity(accidentDetails, mockVehicle);
+    
+    expect(result.severity_level).toBe(4);
+    expect(result.severity_text).toBe('Major');
+    expect(result.post_repair_naaa_grade).toContain('Below Average');
+  });
+});
+```
+
+### 6.2 Integration Tests
+```typescript
+// Test end-to-end appraisal generation
+describe('Appraisal Generation E2E', () => {
+  it('should generate complete appraisal report', async () => {
+    const appraisalData = createMockAppraisalData();
+    
+    // Step 1: Create appraisal
+    const appraisal = await createAppraisal(appraisalData);
+    expect(appraisal.id).toBeDefined();
+    
+    // Step 2: Search comparables
+    const preComps = await searchComparableVehicles({
+      ...appraisalData.vehicle,
+      accident_history_required: false
+    });
+    expect(preComps.length).toBeGreaterThanOrEqual(3);
+    
+    // Step 3: Calculate DV
+    const valuation = await calculateDiminishedValue(preComps, postComps, 5000);
+    expect(valuation.diminished_value).toBeGreaterThan(0);
+    
+    // Step 4: Generate PDF
+    const pdfUrl = await generatePDFReport(appraisal);
+    expect(pdfUrl).toMatch(/https:\/\//);
+  });
+});
+```
+
+---
+
+## SECTION 7: USER DOCUMENTATION
+
+### 7.1 Quick Start Guide (For End Users)
+```markdown
+# How to Generate Your Diminished Value Appraisal
+
+## Step 1: Create Account
+Sign up at claimshield-dv.com with your email address.
+
+## Step 2: Start New Appraisal
+Click "New Appraisal" and enter:
+- Your vehicle's VIN (system will auto-populate details)
+- Accident date
+- Your contact information
+
+## Step 3: Accident Details
+Upload your repair estimate and describe:
+- What was damaged
+- Whether frame work was needed
+- Total repair cost
+
+## Step 4: Vehicle Condition
+Tell us about your car's condition before the accident:
+- Mileage
+- Overall condition (excellent/good/average)
+- Any recent maintenance or upgrades
+
+## Step 5: Find Comparable Vehicles
+Choose one:
+- **Auto-Search**: Let our system find matching vehicles (recommended)
+- **Manual Entry**: Enter your own research
+
+## Step 6: Review & Generate
+Review all information, then click "Generate Report."
+Your professional PDF report will be ready in 2-3 minutes!
+
+## Step 7: Use Your Report
+Download your report and:
+- Submit to insurance company
+- Share with your attorney
+- Use in settlement negotiations
+```
+
+---
+
+## FINAL SUMMARY FOR CODING AGENT
+
+**Your mission is to build a system where:**
+
+1. **User fills out a guided form** with vehicle info, accident details, and optionally adds comparable vehicles
+2. **System auto-searches** for clean and accident-history comparable vehicles if user doesn't provide them
+3. **System auto-calculates** all adjustments, valuations, and diminished value
+4. **System auto-generates** all narrative text, technical analysis, and legal citations
+5. **System produces** a professional 15-25 page PDF report that looks identical to the sample reports provided
+
+**The user should only input raw data. Everything else is automated.**
+
+This schema provides the complete blueprint for building ClaimShield DV. Use this document as your source of truth for all data structures, calculations, and report generation logic.
+
+---
+
+*End of Master Appraisal Schema Document*

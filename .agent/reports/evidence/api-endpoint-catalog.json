@@ -1,0 +1,418 @@
+{
+  "generatedAt": "2026-03-02T15:40:06.470Z",
+  "endpoints": [
+    {
+      "route": "/appraisals/[id]/auto-save",
+      "file": "app/api/appraisals/[id]/auto-save/route.ts",
+      "methods": [
+        "PATCH"
+      ],
+      "usesRequireAuth": true,
+      "usesOwnership": true,
+      "usesZod": false,
+      "hasTryCatch": true,
+      "hasTodo": false,
+      "compliance": {
+        "auth": true,
+        "ownership": true,
+        "validation": false,
+        "issues": [
+          "missing_request_validation"
+        ]
+      }
+    },
+    {
+      "route": "/appraisals/[id]/generate-pdf",
+      "file": "app/api/appraisals/[id]/generate-pdf/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "usesRequireAuth": true,
+      "usesOwnership": true,
+      "usesZod": false,
+      "hasTryCatch": true,
+      "hasTodo": false,
+      "compliance": {
+        "auth": true,
+        "ownership": true,
+        "validation": false,
+        "issues": [
+          "missing_request_validation"
+        ]
+      }
+    },
+    {
+      "route": "/appraisals/[id]",
+      "file": "app/api/appraisals/[id]/route.ts",
+      "methods": [
+        "GET",
+        "PATCH",
+        "DELETE"
+      ],
+      "usesRequireAuth": true,
+      "usesOwnership": true,
+      "usesZod": false,
+      "hasTryCatch": true,
+      "hasTodo": false,
+      "compliance": {
+        "auth": true,
+        "ownership": true,
+        "validation": false,
+        "issues": [
+          "missing_request_validation"
+        ]
+      }
+    },
+    {
+      "route": "/appraisals",
+      "file": "app/api/appraisals/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "usesRequireAuth": true,
+      "usesOwnership": false,
+      "usesZod": true,
+      "hasTryCatch": true,
+      "hasTodo": false,
+      "compliance": {
+        "auth": true,
+        "ownership": true,
+        "validation": true,
+        "issues": []
+      }
+    },
+    {
+      "route": "/calculations",
+      "file": "app/api/calculations/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "usesRequireAuth": true,
+      "usesOwnership": true,
+      "usesZod": false,
+      "hasTryCatch": true,
+      "hasTodo": false,
+      "compliance": {
+        "auth": true,
+        "ownership": true,
+        "validation": false,
+        "issues": [
+          "missing_request_validation"
+        ]
+      }
+    },
+    {
+      "route": "/checkout",
+      "file": "app/api/checkout/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "usesRequireAuth": true,
+      "usesOwnership": false,
+      "usesZod": false,
+      "hasTryCatch": true,
+      "hasTodo": false,
+      "compliance": {
+        "auth": true,
+        "ownership": true,
+        "validation": false,
+        "issues": [
+          "missing_request_validation"
+        ]
+      }
+    },
+    {
+      "route": "/comparables/[id]",
+      "file": "app/api/comparables/[id]/route.ts",
+      "methods": [
+        "PATCH",
+        "DELETE"
+      ],
+      "usesRequireAuth": true,
+      "usesOwnership": false,
+      "usesZod": false,
+      "hasTryCatch": true,
+      "hasTodo": false,
+      "compliance": {
+        "auth": true,
+        "ownership": false,
+        "validation": false,
+        "issues": [
+          "missing_ownership_guard",
+          "missing_request_validation"
+        ]
+      }
+    },
+    {
+      "route": "/comparables/search",
+      "file": "app/api/comparables/search/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "usesRequireAuth": true,
+      "usesOwnership": false,
+      "usesZod": false,
+      "hasTryCatch": true,
+      "hasTodo": false,
+      "compliance": {
+        "auth": true,
+        "ownership": false,
+        "validation": false,
+        "issues": [
+          "missing_ownership_guard",
+          "missing_request_validation"
+        ]
+      }
+    },
+    {
+      "route": "/documents/[id]",
+      "file": "app/api/documents/[id]/route.ts",
+      "methods": [
+        "DELETE"
+      ],
+      "usesRequireAuth": true,
+      "usesOwnership": false,
+      "usesZod": false,
+      "hasTryCatch": true,
+      "hasTodo": false,
+      "compliance": {
+        "auth": true,
+        "ownership": false,
+        "validation": false,
+        "issues": [
+          "missing_ownership_guard",
+          "missing_request_validation"
+        ]
+      }
+    },
+    {
+      "route": "/documents/extract",
+      "file": "app/api/documents/extract/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "usesRequireAuth": true,
+      "usesOwnership": false,
+      "usesZod": false,
+      "hasTryCatch": true,
+      "hasTodo": false,
+      "compliance": {
+        "auth": true,
+        "ownership": false,
+        "validation": false,
+        "issues": [
+          "missing_ownership_guard",
+          "missing_request_validation"
+        ]
+      }
+    },
+    {
+      "route": "/documents/upload",
+      "file": "app/api/documents/upload/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "usesRequireAuth": true,
+      "usesOwnership": false,
+      "usesZod": false,
+      "hasTryCatch": true,
+      "hasTodo": false,
+      "compliance": {
+        "auth": true,
+        "ownership": false,
+        "validation": false,
+        "issues": [
+          "missing_ownership_guard",
+          "missing_request_validation"
+        ]
+      }
+    },
+    {
+      "route": "/email/send",
+      "file": "app/api/email/send/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "usesRequireAuth": true,
+      "usesOwnership": true,
+      "usesZod": false,
+      "hasTryCatch": true,
+      "hasTodo": false,
+      "compliance": {
+        "auth": true,
+        "ownership": true,
+        "validation": false,
+        "issues": [
+          "missing_request_validation"
+        ]
+      }
+    },
+    {
+      "route": "/templates/[type]",
+      "file": "app/api/templates/[type]/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "usesRequireAuth": true,
+      "usesOwnership": true,
+      "usesZod": false,
+      "hasTryCatch": true,
+      "hasTodo": false,
+      "compliance": {
+        "auth": true,
+        "ownership": true,
+        "validation": false,
+        "issues": [
+          "missing_request_validation"
+        ]
+      }
+    },
+    {
+      "route": "/webhooks/clerk",
+      "file": "app/api/webhooks/clerk/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "usesRequireAuth": false,
+      "usesOwnership": false,
+      "usesZod": false,
+      "hasTryCatch": true,
+      "hasTodo": false,
+      "compliance": {
+        "auth": true,
+        "ownership": true,
+        "validation": false,
+        "issues": [
+          "missing_request_validation"
+        ]
+      }
+    },
+    {
+      "route": "/webhooks/stripe",
+      "file": "app/api/webhooks/stripe/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "usesRequireAuth": false,
+      "usesOwnership": false,
+      "usesZod": false,
+      "hasTryCatch": true,
+      "hasTodo": true,
+      "compliance": {
+        "auth": true,
+        "ownership": true,
+        "validation": false,
+        "issues": [
+          "missing_request_validation",
+          "contains_todo"
+        ]
+      }
+    }
+  ],
+  "summary": {
+    "total_endpoints": 15,
+    "missing_required_endpoints": [
+      "/vin/decode",
+      "/appraisals/[id]/duplicate",
+      "/appraisals/[id]/archive",
+      "/appraisals/bulk-download",
+      "/appraisals/[id]/share",
+      "/documents/[id]/signed-url",
+      "/users/role (authenticated internal route)",
+      "/webhooks/clerk (signed event-only handler)"
+    ],
+    "endpoints_with_issues": [
+      {
+        "route": "/appraisals/[id]/auto-save",
+        "issues": [
+          "missing_request_validation"
+        ]
+      },
+      {
+        "route": "/appraisals/[id]/generate-pdf",
+        "issues": [
+          "missing_request_validation"
+        ]
+      },
+      {
+        "route": "/appraisals/[id]",
+        "issues": [
+          "missing_request_validation"
+        ]
+      },
+      {
+        "route": "/calculations",
+        "issues": [
+          "missing_request_validation"
+        ]
+      },
+      {
+        "route": "/checkout",
+        "issues": [
+          "missing_request_validation"
+        ]
+      },
+      {
+        "route": "/comparables/[id]",
+        "issues": [
+          "missing_ownership_guard",
+          "missing_request_validation"
+        ]
+      },
+      {
+        "route": "/comparables/search",
+        "issues": [
+          "missing_ownership_guard",
+          "missing_request_validation"
+        ]
+      },
+      {
+        "route": "/documents/[id]",
+        "issues": [
+          "missing_ownership_guard",
+          "missing_request_validation"
+        ]
+      },
+      {
+        "route": "/documents/extract",
+        "issues": [
+          "missing_ownership_guard",
+          "missing_request_validation"
+        ]
+      },
+      {
+        "route": "/documents/upload",
+        "issues": [
+          "missing_ownership_guard",
+          "missing_request_validation"
+        ]
+      },
+      {
+        "route": "/email/send",
+        "issues": [
+          "missing_request_validation"
+        ]
+      },
+      {
+        "route": "/templates/[type]",
+        "issues": [
+          "missing_request_validation"
+        ]
+      },
+      {
+        "route": "/webhooks/clerk",
+        "issues": [
+          "missing_request_validation"
+        ]
+      },
+      {
+        "route": "/webhooks/stripe",
+        "issues": [
+          "missing_request_validation",
+          "contains_todo"
+        ]
+      }
+    ]
+  }
+}

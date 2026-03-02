@@ -1,0 +1,67 @@
+{
+  "generatedAt": "2026-03-02T15:40:31.849Z",
+  "dependencyCounts": {
+    "dependencies": 30,
+    "devDependencies": 11
+  },
+  "likelyUnusedDeps": [
+    "@hookform/resolvers",
+    "docx",
+    "react-dom"
+  ],
+  "env": {
+    "usedAtRuntime": [
+      "APIFY_API_TOKEN",
+      "BLOB_READ_WRITE_TOKEN",
+      "CLERK_SECRET_KEY",
+      "DATABASE_URL",
+      "GEMINI_API_KEY",
+      "NEXT_PUBLIC_APP_URL",
+      "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+      "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+      "SENDGRID_API_KEY",
+      "STRIPE_ATTORNEY_PRICE_ID",
+      "STRIPE_BODY_SHOP_PRICE_ID",
+      "STRIPE_INDIVIDUAL_PRICE_ID",
+      "STRIPE_PROFESSIONAL_PRICE_ID",
+      "STRIPE_SECRET_KEY",
+      "STRIPE_WEBHOOK_SECRET"
+    ],
+    "missingInEnvExample": [
+      "STRIPE_ATTORNEY_PRICE_ID",
+      "STRIPE_BODY_SHOP_PRICE_ID",
+      "STRIPE_INDIVIDUAL_PRICE_ID",
+      "STRIPE_PROFESSIONAL_PRICE_ID"
+    ],
+    "missingInAgentEnvLocal": [
+      "GEMINI_API_KEY",
+      "STRIPE_ATTORNEY_PRICE_ID",
+      "STRIPE_BODY_SHOP_PRICE_ID",
+      "STRIPE_INDIVIDUAL_PRICE_ID",
+      "STRIPE_PROFESSIONAL_PRICE_ID",
+      "STRIPE_WEBHOOK_SECRET"
+    ]
+  },
+  "notableVersionSignals": {
+    "next": "^15.2.3",
+    "react": "^19",
+    "drizzleKit": "^0.31.9",
+    "stripe": "^20.4.0"
+  },
+  "security": {
+    "npm_audit_vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 4,
+      "high": 0,
+      "critical": 0,
+      "total": 4
+    },
+    "vulnerable_packages": [
+      "@esbuild-kit/core-utils",
+      "@esbuild-kit/esm-loader",
+      "drizzle-kit",
+      "esbuild"
+    ]
+  }
+}

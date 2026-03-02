@@ -1,0 +1,78 @@
+lib/pdf/generator.tsx:101:  appraisal: any;
+lib/pdf/generator.tsx:160:export async function generatePDF(appraisal: any): Promise<Buffer> {
+components/ui/input.tsx:11:          "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+lib/templates/demand-letter-generic.ts:3:export function generateGenericDemandLetter(appraisal: any): string {
+components/ui/textarea.tsx:12:        "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+lib/email/sendgrid.ts:74:        If you have any questions about your appraisal, please contact us.<br>
+lib/email/sendgrid.ts:145:      <p>If you have any questions, please don't hesitate to contact us.</p>
+app/(dashboard)/appraisals/[id]/page.tsx:32:    // TODO: Implement duplicate functionality
+app/(dashboard)/appraisals/[id]/page.tsx:37:    // TODO: Implement archive functionality
+app/(dashboard)/appraisals/[id]/page.tsx:42:    // TODO: Implement PDF generation
+app/(dashboard)/appraisals/[id]/page.tsx:47:    // TODO: Implement email functionality
+components/ui/select.tsx:22:      "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+lib/templates/demand-letter-ga.ts:3:export function generateGeorgiaDemandLetter(appraisal: any): string {
+lib/scraping/apify-search.ts:57:  return items.map((item: any) => ({
+app/(dashboard)/appraisals/[id]/documents/page.tsx:8:  const [documents, setDocuments] = useState<any[]>([]);
+app/(dashboard)/dashboard/page.tsx:103:          placeholder="Search appraisals..."
+app/api/documents/upload/route.ts:31:      fileType: fileType as any,
+app/(dashboard)/appraisals/[id]/wizard/page.tsx:64:  documents: any[];
+app/(dashboard)/appraisals/[id]/wizard/page.tsx:65:  comparables: any[];
+app/(dashboard)/appraisals/[id]/wizard/page.tsx:66:  valuationResults: any;
+app/(dashboard)/appraisals/[id]/wizard/page.tsx:67:  severityAnalysis: any;
+app/(dashboard)/appraisals/[id]/wizard/page.tsx:150:  const updateField = (field: string, value: any) => {
+app/(dashboard)/appraisals/[id]/wizard/page.tsx:154:      let current: any = newData;
+app/api/calculations/route.ts:33:      appraisal.accidentDetails as any,
+app/api/calculations/route.ts:39:      appraisal.subjectVehicle as any,
+app/api/calculations/route.ts:53:        valuationResults: valuationResults as any,
+app/api/calculations/route.ts:54:        severityAnalysis: severityAnalysis as any,
+app/_components/wizard/Step4DocumentUpload.tsx:22:  formData: any;
+app/_components/wizard/Step4DocumentUpload.tsx:23:  setFormData: (data: any) => void;
+app/_components/wizard/Step4DocumentUpload.tsx:34:  const [extractionResults, setExtractionResults] = useState<Record<string, any>>({});
+app/api/webhooks/stripe/route.ts:83:      // TODO: Send email notification
+app/_components/wizard/Step7Review.tsx:56:    comparables: any[];
+app/_components/wizard/Step7Review.tsx:57:    valuationResults: any;
+app/_components/wizard/Step7Review.tsx:58:    severityAnalysis: any;
+app/_components/wizard/Step6Calculations.tsx:16:    comparables: any[];
+app/_components/wizard/Step6Calculations.tsx:21:  onChange: (field: string, value: any) => void;
+app/_components/wizard/Step6Calculations.tsx:26:  const [valuation, setValuation] = useState<any>(null);
+app/_components/wizard/Step5Comparables.tsx:20:    comparables: any[];
+app/_components/wizard/Step5Comparables.tsx:22:  onChange: (field: string, value: any) => void;
+app/_components/wizard/Step5Comparables.tsx:27:  const [comparables, setComparables] = useState<any[]>(data.comparables || []);
+app/_components/wizard/WizardLayout.tsx:16:  const [formData, setFormData] = useState<Record<string, any>>({});
+app/_components/wizard/Step3AccidentDetails.tsx:4:  data: any;
+app/_components/wizard/Step3AccidentDetails.tsx:5:  onChange: (field: string, value: any) => void;
+app/_components/wizard/Step3AccidentDetails.tsx:30:            placeholder="Front driver side, rear passenger quarter panel, etc."
+app/_components/wizard/Step3AccidentDetails.tsx:72:            placeholder="Driver door, passenger fender, hood, etc."
+app/_components/wizard/Step3AccidentDetails.tsx:81:            placeholder="Driver door, passenger fender, hood, etc."
+app/_components/wizard/Step3AccidentDetails.tsx:98:                placeholder="0.00"
+app/_components/wizard/Step3AccidentDetails.tsx:111:                placeholder="0.00"
+app/_components/wizard/Step3AccidentDetails.tsx:127:                placeholder="0.00"
+app/_components/wizard/Step3AccidentDetails.tsx:140:                placeholder="0.00"
+app/_components/wizard/Step3AccidentDetails.tsx:155:              placeholder="0"
+app/_components/wizard/Step3AccidentDetails.tsx:163:              placeholder="0"
+app/_components/wizard/Step3AccidentDetails.tsx:174:              placeholder="0"
+app/_components/wizard/Step3AccidentDetails.tsx:182:              placeholder="0"
+app/_components/wizard/Step2OwnerInfo.tsx:4:  data: any;
+app/_components/wizard/Step2OwnerInfo.tsx:5:  onChange: (field: string, value: any) => void;
+app/_components/wizard/Step2OwnerInfo.tsx:23:              placeholder="John"
+app/_components/wizard/Step2OwnerInfo.tsx:31:              placeholder="Doe"
+app/_components/wizard/Step2OwnerInfo.tsx:41:            placeholder="john@example.com"
+app/_components/wizard/Step2OwnerInfo.tsx:50:            placeholder="(555) 123-4567"
+app/_components/wizard/Step2OwnerInfo.tsx:59:            placeholder="123 Main St"
+app/_components/wizard/Step2OwnerInfo.tsx:69:              placeholder="Atlanta"
+app/_components/wizard/Step2OwnerInfo.tsx:77:              placeholder="GA"
+app/_components/wizard/Step2OwnerInfo.tsx:86:              placeholder="30309"
+app/_components/wizard/Step2OwnerInfo.tsx:100:              placeholder="State Farm"
+app/_components/wizard/Step2OwnerInfo.tsx:110:                placeholder="ABC123456"
+app/_components/wizard/Step2OwnerInfo.tsx:118:                placeholder="CLM-2024-001"
+app/_components/wizard/Step2OwnerInfo.tsx:128:              placeholder="Jane Smith"
+app/_components/wizard/Step2OwnerInfo.tsx:138:                placeholder="(555) 987-6543"
+app/_components/wizard/Step2OwnerInfo.tsx:146:                placeholder="jane@insurance.com"
+app/_components/wizard/Step1VehicleInfo.tsx:7:  data: any;
+app/_components/wizard/Step1VehicleInfo.tsx:8:  onChange: (field: string, value: any) => void;
+app/_components/wizard/Step1VehicleInfo.tsx:48:            placeholder="1G1ZT53847F123456"
+app/_components/wizard/Step1VehicleInfo.tsx:61:              placeholder="2020"
+app/_components/wizard/Step1VehicleInfo.tsx:71:              placeholder="50000"
+app/_components/wizard/Step1VehicleInfo.tsx:84:              placeholder="Toyota"
+app/_components/wizard/Step1VehicleInfo.tsx:94:              placeholder="Camry"
+app/_components/wizard/Step1VehicleInfo.tsx:106:            placeholder="LE, XSE, etc."

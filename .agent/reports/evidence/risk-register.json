@@ -1,0 +1,203 @@
+{
+  "generated_at": "2026-03-02",
+  "risks": [
+    {
+      "risk_id": "RISK-P0-001",
+      "severity": "critical",
+      "classification": "P0",
+      "domain": "Security",
+      "file_locations": ["app/api/webhooks/clerk/route.ts", "app/(auth)/onboarding/page.tsx"],
+      "root_cause": "Role assignment endpoint is implemented as an unauthenticated webhook-style route without Clerk signature verification; onboarding writes to it directly.",
+      "recommended_fix": "Split onboarding role update into authenticated internal API route; keep actual Clerk webhook separately with svix signature validation and strict event handling.",
+      "estimated_agent_hours": 8,
+      "launch_impact": "Account/role tampering risk and non-compliant auth model."
+    },
+    {
+      "risk_id": "RISK-P0-002",
+      "severity": "critical",
+      "classification": "P0",
+      "domain": "Security",
+      "file_locations": ["lib/storage/blob.ts"],
+      "root_cause": "Blob uploads are stored with public access despite private/signed URL requirements.",
+      "recommended_fix": "Switch to private Blob access mode, implement signed URL issuance and expiry checks, and enforce ownership on retrieval/download.",
+      "estimated_agent_hours": 12,
+      "launch_impact": "Potential data leakage of claimant documents and reports."
+    },
+    {
+      "risk_id": "RISK-P0-003",
+      "severity": "critical",
+      "classification": "P0",
+      "domain": "Authorization",
+      "file_locations": ["app/api/comparables/[id]/route.ts", "app/api/comparables/search/route.ts", "app/api/documents/[id]/route.ts", "app/api/documents/extract/route.ts", "app/api/documents/upload/route.ts"],
+      "root_cause": "Require-auth present but ownership checks are missing for document/comparable operations.",
+      "recommended_fix": "Introduce and enforce resource-level ownership validation in every mutating/read endpoint tied to appraisal/doc IDs.",
+      "estimated_agent_hours": 14,
+      "launch_impact": "Cross-tenant data access/modification risk."
+    },
+    {
+      "risk_id": "RISK-P0-004",
+      "severity": "critical",
+      "classification": "P0",
+      "domain": "Core Workflow",
+      "file_locations": ["app/_components/wizard/Step4DocumentUpload.tsx", "app/api/documents/extract/route.ts"],
+      "root_cause": "UI sends extraction payload with documentId while API expects documentUrl/documentType.",
+      "recommended_fix": "Unify extraction contract; persist document metadata and invoke extraction by URL/type reliably with schema validation.",
+      "estimated_agent_hours": 10,
+      "launch_impact": "AI extraction workflow fails in core appraisal journey."
+    },
+    {
+      "risk_id": "RISK-P0-005",
+      "severity": "critical",
+      "classification": "P0",
+      "domain": "Routing",
+      "file_locations": ["app/_components/wizard/WizardLayout.tsx", "app/_components/wizard/Step7Review.tsx", "app/_components/wizard/Step8Generate.tsx"],
+      "root_cause": "Client navigation pushes `/appraisals/*` paths that do not match Next app route namespace (`/dashboard/appraisals/*`).",
+      "recommended_fix": "Normalize all internal links/router.push targets to the dashboard route group and add route constants.",
+      "estimated_agent_hours": 4,
+      "launch_impact": "Wizard/report flows break for end users."
+    },
+    {
+      "risk_id": "RISK-P0-006",
+      "severity": "critical",
+      "classification": "P0",
+      "domain": "Feature Completeness",
+      "file_locations": ["lib/pdf/generator.tsx"],
+      "root_cause": "PDF generator does not implement required 14+ section report format.",
+      "recommended_fix": "Build full sectioned React-PDF pipeline with cover letter, comps tables, valuation analysis, narratives, legal citations, appendices, and pagination.",
+      "estimated_agent_hours": 48,
+      "launch_impact": "Primary monetized deliverable is not launch-ready."
+    },
+    {
+      "risk_id": "RISK-P0-007",
+      "severity": "critical",
+      "classification": "P0",
+      "domain": "Data Layer",
+      "file_locations": ["drizzle.config.ts", "lib/db/schema.ts"],
+      "root_cause": "No migration artifacts detected; schema/index rollout state is not reproducible.",
+      "recommended_fix": "Generate and commit baseline migrations, add migration CI checks, and document migration runbook.",
+      "estimated_agent_hours": 6,
+      "launch_impact": "Production DB drift and unsafe deploy risk."
+    },
+    {
+      "risk_id": "RISK-P0-008",
+      "severity": "critical",
+      "classification": "P0",
+      "domain": "Payments",
+      "file_locations": ["app/api/checkout/route.ts", ".env.local.example", ".agent/env.local"],
+      "root_cause": "Checkout expects STRIPE_*_PRICE_ID vars that are absent/mismatched in env templates/context.",
+      "recommended_fix": "Standardize env key names across code, templates, and deployment docs; add startup validation for all required price IDs.",
+      "estimated_agent_hours": 4,
+      "launch_impact": "Revenue path can fail at runtime."
+    },
+    {
+      "risk_id": "RISK-P0-009",
+      "severity": "critical",
+      "classification": "P0",
+      "domain": "Quality",
+      "file_locations": ["package.json", "(repo-wide)"],
+      "root_cause": "No automated test suite found for critical workflows and security boundaries.",
+      "recommended_fix": "Add unit + integration + E2E baseline suite for auth ownership, calculations, uploads, extraction, report generation, and payments.",
+      "estimated_agent_hours": 60,
+      "launch_impact": "High regression risk and no release safety net."
+    },
+    {
+      "risk_id": "RISK-P1-001",
+      "severity": "high",
+      "classification": "P1",
+      "domain": "Comparables",
+      "file_locations": ["lib/scraping/apify-search.ts"],
+      "root_cause": "Apify actor is placeholder `your-actor-id` and lacks robust result guarantees.",
+      "recommended_fix": "Integrate production actor IDs, implement retries/fallbacks, enforce min/max comp counts with expansion logic.",
+      "estimated_agent_hours": 12,
+      "launch_impact": "Unreliable valuation inputs reduce report credibility."
+    },
+    {
+      "risk_id": "RISK-P1-002",
+      "severity": "high",
+      "classification": "P1",
+      "domain": "Calculation",
+      "file_locations": ["lib/calculations/valuation.ts"],
+      "root_cause": "`dvPercentOfRepair` is hardcoded to 0 and server-side validation is thin.",
+      "recommended_fix": "Compute all required valuation metrics from appraisal data and enforce minimum comp constraints + typed input validation.",
+      "estimated_agent_hours": 8,
+      "launch_impact": "Incorrect outputs can undermine legal defensibility."
+    },
+    {
+      "risk_id": "RISK-P1-003",
+      "severity": "high",
+      "classification": "P1",
+      "domain": "RBAC",
+      "file_locations": ["app/api/**/*", "app/(dashboard)/**/*"],
+      "root_cause": "Role-based feature/API restrictions are largely unimplemented.",
+      "recommended_fix": "Add role policy layer and enforce in API handlers + UI capability guards.",
+      "estimated_agent_hours": 20,
+      "launch_impact": "Paid/professional feature boundaries cannot be enforced."
+    },
+    {
+      "risk_id": "RISK-P1-004",
+      "severity": "high",
+      "classification": "P1",
+      "domain": "Dashboard",
+      "file_locations": ["app/(dashboard)/appraisals/[id]/page.tsx"],
+      "root_cause": "Duplicate/archive/generate/email actions are TODO stubs.",
+      "recommended_fix": "Implement server actions/endpoints for each operation with ownership checks and audit logs.",
+      "estimated_agent_hours": 16,
+      "launch_impact": "Operational UX and workflow throughput are reduced."
+    },
+    {
+      "risk_id": "RISK-P1-005",
+      "severity": "high",
+      "classification": "P1",
+      "domain": "Schema",
+      "file_locations": ["lib/db/schema.ts"],
+      "root_cause": "Required indexes (user_id/appraisal_id/status) are not explicitly declared.",
+      "recommended_fix": "Add index definitions and migration scripts; benchmark key query plans.",
+      "estimated_agent_hours": 6,
+      "launch_impact": "Performance degradation under moderate load."
+    },
+    {
+      "risk_id": "RISK-P1-006",
+      "severity": "high",
+      "classification": "P1",
+      "domain": "Observability",
+      "file_locations": ["app/api/**/*", "lib/**/*"],
+      "root_cause": "No centralized structured logging/error tracking integration.",
+      "recommended_fix": "Add request correlation IDs, structured logs, and error reporting hooks on all critical routes.",
+      "estimated_agent_hours": 14,
+      "launch_impact": "Incident diagnosis and SLA management are weak."
+    },
+    {
+      "risk_id": "RISK-P2-001",
+      "severity": "medium",
+      "classification": "P2",
+      "domain": "Dependency Hygiene",
+      "file_locations": ["package.json"],
+      "root_cause": "Likely unused dependencies increase maintenance/security overhead.",
+      "recommended_fix": "Perform validated dep pruning with CI checks to avoid false positives.",
+      "estimated_agent_hours": 3,
+      "launch_impact": "Slightly larger maintenance footprint."
+    },
+    {
+      "risk_id": "RISK-P2-002",
+      "severity": "medium",
+      "classification": "P2",
+      "domain": "Performance",
+      "file_locations": ["app/**/*", "lib/**/*"],
+      "root_cause": "No explicit performance budgets or bundle analysis artifacts.",
+      "recommended_fix": "Add Lighthouse/bundle analyzer workflows with thresholds and regressions alerts.",
+      "estimated_agent_hours": 8,
+      "launch_impact": "Potentially slower UX on low-end devices."
+    },
+    {
+      "risk_id": "RISK-P2-003",
+      "severity": "medium",
+      "classification": "P2",
+      "domain": "Accessibility",
+      "file_locations": ["app/_components/**/*", "components/ui/**/*"],
+      "root_cause": "No automated accessibility checks and limited explicit a11y patterns.",
+      "recommended_fix": "Add axe-based checks, keyboard nav tests, and WCAG conformance pass.",
+      "estimated_agent_hours": 10,
+      "launch_impact": "Compliance/usability gaps for assistive users."
+    }
+  ]
+}
