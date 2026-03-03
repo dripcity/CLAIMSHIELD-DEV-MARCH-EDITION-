@@ -56,10 +56,17 @@ interface Step7ReviewProps {
     comparables: any[];
     valuationResults: any;
     severityAnalysis: any;
+    appraiserInfo?: {
+      name?: string;
+      license?: string;
+      certifications?: string[];
+      signatureUrl?: string;
+    };
   };
+  userRole?: string;
 }
 
-export function Step7Review({ data }: Step7ReviewProps) {
+export function Step7Review({ data, userRole }: Step7ReviewProps) {
   const router = useRouter();
   const [editingStep, setEditingStep] = useState<number | null>(null);
 
@@ -67,6 +74,8 @@ export function Step7Review({ data }: Step7ReviewProps) {
     setEditingStep(step);
     router.push(`/appraisals/${data.subjectVehicle.vin}/wizard?step=${step}`);
   };
+
+  const isAppraiser = userRole === 'appraiser';
 
   return (
     <div className="space-y-6">
@@ -292,6 +301,59 @@ export function Step7Review({ data }: Step7ReviewProps) {
               <p className="mt-1 text-amber-700">
                 Post-Repair NAAA Grade: {data.severityAnalysis.postRepairNaaaGrade}
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* Appraiser Information (for professional appraisers) */}
+        {isAppraiser && data.appraiserInfo && (
+          <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-semibold text-blue-800">Professional Appraiser Information</h3>
+              <button
+                onClick={() => handleEdit(7)}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                Edit
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              {data.appraiserInfo.name && (
+                <div>
+                  <span className="text-blue-700">Appraiser Name:</span>
+                  <span className="ml-2 font-medium">{data.appraiserInfo.name}</span>
+                </div>
+              )}
+              {data.appraiserInfo.license && (
+                <div>
+                  <span className="text-blue-700">License Number:</span>
+                  <span className="ml-2 font-medium">{data.appraiserInfo.license}</span>
+                </div>
+              )}
+              {data.appraiserInfo.certifications && data.appraiserInfo.certifications.length > 0 && (
+                <div className="col-span-2">
+                  <span className="text-blue-700">Certifications:</span>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {data.appraiserInfo.certifications.map((cert, index) => (
+                      <span key={index} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                        {cert}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {data.appraiserInfo.signatureUrl && (
+                <div className="col-span-2">
+                  <span className="text-blue-700">Digital Signature:</span>
+                  <div className="mt-1 border border-blue-200 rounded p-2 bg-white inline-block">
+                    <img
+                      src={data.appraiserInfo.signatureUrl}
+                      alt="Appraiser signature"
+                      className="max-h-16 object-contain"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

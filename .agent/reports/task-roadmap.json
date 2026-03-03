@@ -1,461 +1,813 @@
 {
-  "generated_at": "2026-03-02",
-  "program": "ClaimShield DV Launch Readiness",
-  "assumptions": {
-    "execution_model": "24/7 multi-agent with human shift approvals every 12h",
-    "all_agent_docs_mandatory": true,
-    "first_party_scope_only": true
-  },
-  "tasks": [
+  "project": "ClaimShield DV - Launch Readiness",
+  "version": "1.0.0",
+  "generated": "2026-03-02",
+  "totalTasks": 83,
+  "completedTasks": 54,
+  "pendingTasks": 29,
+  "estimatedDays": 15,
+  "phases": [
     {
-      "task_id": "CS-P1-001",
-      "priority": "P0",
-      "category": "Security",
-      "phase": 1,
-      "estimated_agent_hours": 8,
-      "dependencies": [],
-      "assignable_agent_type": "Code Generation",
-      "description": "Replace insecure Clerk role endpoint pattern with verified webhook + authenticated onboarding role API.",
-      "acceptance_criteria": ["Clerk webhook signature validation implemented", "Onboarding uses authenticated internal API, not webhook path", "Role updates cannot be spoofed by unauthenticated callers"],
-      "files_to_modify": ["app/api/webhooks/clerk/route.ts", "app/(auth)/onboarding/page.tsx", "lib/utils/auth.ts"],
-      "technical_approach": "Introduce dedicated `/api/users/role` route guarded by `requireAuth`; keep webhook route limited to Clerk events with signature verification and event schema validation.",
-      "validation_method": "Integration tests for unauthorized role-change attempts + signed webhook acceptance path.",
-      "risks_blockers": "Requires Clerk webhook secret configuration."
+      "phase": "Week 1: Testing & Security Hardening",
+      "duration": "5 days",
+      "priority": "Critical",
+      "tasks": [
+        {
+          "day": 1,
+          "title": "Environment Setup & Database Tests",
+          "duration": "8 hours",
+          "priority": "Critical",
+          "tasks": [
+            {
+              "id": "W1D1-1",
+              "title": "Set up test database",
+              "duration": "1 hour",
+              "assignee": "Developer",
+              "dependencies": [],
+              "deliverable": "Test database configured"
+            },
+            {
+              "id": "W1D1-2",
+              "title": "Run database integration tests",
+              "duration": "30 min",
+              "assignee": "Developer",
+              "dependencies": ["W1D1-1"],
+              "deliverable": "7 database tests passing"
+            },
+            {
+              "id": "W1D1-3",
+              "title": "Set up Clerk test environment",
+              "duration": "1 hour",
+              "assignee": "Developer",
+              "dependencies": [],
+              "deliverable": "Clerk test environment configured"
+            },
+            {
+              "id": "W1D1-4",
+              "title": "Run authentication tests",
+              "duration": "20 min",
+              "assignee": "Developer",
+              "dependencies": ["W1D1-3"],
+              "deliverable": "2 authentication tests passing"
+            },
+            {
+              "id": "W1D1-5",
+              "title": "Set up Vercel Blob test bucket",
+              "duration": "30 min",
+              "assignee": "Developer",
+              "dependencies": [],
+              "deliverable": "Blob test bucket configured"
+            },
+            {
+              "id": "W1D1-6",
+              "title": "Run file storage tests",
+              "duration": "15 min",
+              "assignee": "Developer",
+              "dependencies": ["W1D1-5"],
+              "deliverable": "2 file storage tests passing"
+            },
+            {
+              "id": "W1D1-7",
+              "title": "Document test results",
+              "duration": "1 hour",
+              "assignee": "Developer",
+              "dependencies": ["W1D1-2", "W1D1-4", "W1D1-6"],
+              "deliverable": "Test results documented"
+            }
+          ]
+        },
+        {
+          "day": 2,
+          "title": "AI, Scraping & Payment Tests",
+          "duration": "8 hours",
+          "priority": "Critical",
+          "tasks": [
+            {
+              "id": "W1D2-1",
+              "title": "Set up Gemini API test key",
+              "duration": "30 min",
+              "assignee": "Developer",
+              "dependencies": [],
+              "deliverable": "Gemini API configured"
+            },
+            {
+              "id": "W1D2-2",
+              "title": "Prepare test documents",
+              "duration": "1 hour",
+              "assignee": "Developer",
+              "dependencies": [],
+              "deliverable": "Test documents uploaded"
+            },
+            {
+              "id": "W1D2-3",
+              "title": "Run AI extraction tests",
+              "duration": "1 hour",
+              "assignee": "Developer",
+              "dependencies": ["W1D2-1", "W1D2-2"],
+              "deliverable": "2 AI extraction tests passing"
+            },
+            {
+              "id": "W1D2-4",
+              "title": "Set up Apify test account",
+              "duration": "30 min",
+              "assignee": "Developer",
+              "dependencies": [],
+              "deliverable": "Apify configured"
+            },
+            {
+              "id": "W1D2-5",
+              "title": "Run web scraping tests",
+              "duration": "2 hours",
+              "assignee": "Developer",
+              "dependencies": ["W1D2-4"],
+              "deliverable": "1 web scraping test passing"
+            },
+            {
+              "id": "W1D2-6",
+              "title": "Set up Stripe test mode",
+              "duration": "30 min",
+              "assignee": "Developer",
+              "dependencies": [],
+              "deliverable": "Stripe test mode configured"
+            },
+            {
+              "id": "W1D2-7",
+              "title": "Run payment tests",
+              "duration": "30 min",
+              "assignee": "Developer",
+              "dependencies": ["W1D2-6"],
+              "deliverable": "3 payment tests passing"
+            },
+            {
+              "id": "W1D2-8",
+              "title": "Document test results",
+              "duration": "1 hour",
+              "assignee": "Developer",
+              "dependencies": ["W1D2-3", "W1D2-5", "W1D2-7"],
+              "deliverable": "Test results documented"
+            }
+          ]
+        },
+        {
+          "day": 3,
+          "title": "Component, API & PDF Tests",
+          "duration": "8 hours",
+          "priority": "High",
+          "tasks": [
+            {
+              "id": "W1D3-1",
+              "title": "Set up React Testing Library",
+              "duration": "1 hour",
+              "assignee": "Developer",
+              "dependencies": [],
+              "deliverable": "React Testing Library configured"
+            },
+            {
+              "id": "W1D3-2",
+              "title": "Write wizard navigation tests",
+              "duration": "2 hours",
+              "assignee": "Developer",
+              "dependencies": ["W1D3-1"],
+              "deliverable": "Wizard navigation tests written"
+            },
+            {
+              "id": "W1D3-3",
+              "title": "Write file upload tests",
+              "duration": "1 hour",
+              "assignee": "Developer",
+              "dependencies": ["W1D3-1"],
+              "deliverable": "File upload tests written"
+            },
+            {
+              "id": "W1D3-4",
+              "title": "Run component tests",
+              "duration": "30 min",
+              "assignee": "Developer",
+              "dependencies": ["W1D3-2", "W1D3-3"],
+              "deliverable": "2 component tests passing"
+            },
+            {
+              "id": "W1D3-5",
+              "title": "Run API integration tests",
+              "duration": "1 hour",
+              "assignee": "Developer",
+              "dependencies": [],
+              "deliverable": "2 API integration tests passing"
+            },
+            {
+              "id": "W1D3-6",
+              "title": "Run PDF generation tests",
+              "duration": "1 hour",
+              "assignee": "Developer",
+              "dependencies": [],
+              "deliverable": "1 PDF generation test passing"
+            },
+            {
+              "id": "W1D3-7",
+              "title": "Document test results",
+              "duration": "1 hour",
+              "assignee": "Developer",
+              "dependencies": ["W1D3-4", "W1D3-5", "W1D3-6"],
+              "deliverable": "Test results documented"
+            }
+          ]
+        },
+        {
+          "day": 4,
+          "title": "Security Hardening",
+          "duration": "8 hours",
+          "priority": "Critical",
+          "tasks": [
+            {
+              "id": "W1D4-1",
+              "title": "Add security headers",
+              "duration": "2 hours",
+              "assignee": "Developer",
+              "dependencies": [],
+              "deliverable": "Security headers configured"
+            },
+            {
+              "id": "W1D4-2",
+              "title": "Review error messages",
+              "duration": "1 hour",
+              "assignee": "Developer",
+              "dependencies": [],
+              "deliverable": "Error messages reviewed"
+            },
+            {
+              "id": "W1D4-3",
+              "title": "Add per-user rate limiting",
+              "duration": "2 hours",
+              "assignee": "Developer",
+              "dependencies": [],
+              "deliverable": "Per-user rate limiting implemented"
+            },
+            {
+              "id": "W1D4-4",
+              "title": "Set up Sentry error tracking",
+              "duration": "1 hour",
+              "assignee": "Developer",
+              "dependencies": [],
+              "deliverable": "Sentry configured"
+            },
+            {
+              "id": "W1D4-5",
+              "title": "Set up Vercel Analytics",
+              "duration": "30 min",
+              "assignee": "Developer",
+              "dependencies": [],
+              "deliverable": "Vercel Analytics enabled"
+            },
+            {
+              "id": "W1D4-6",
+              "title": "Set up uptime monitoring",
+              "duration": "30 min",
+              "assignee": "Developer",
+              "dependencies": [],
+              "deliverable": "Uptime monitoring configured"
+            },
+            {
+              "id": "W1D4-7",
+              "title": "Document security improvements",
+              "duration": "1 hour",
+              "assignee": "Developer",
+              "dependencies": ["W1D4-1", "W1D4-2", "W1D4-3", "W1D4-4", "W1D4-5", "W1D4-6"],
+              "deliverable": "Security documentation updated"
+            }
+          ]
+        },
+        {
+          "day": 5,
+          "title": "Performance Measurement & Optimization",
+          "duration": "8 hours",
+          "priority": "High",
+          "tasks": [
+            {
+              "id": "W1D5-1",
+              "title": "Deploy to Vercel preview",
+              "duration": "1 hour",
+              "assignee": "Developer",
+              "dependencies": [],
+              "deliverable": "Preview deployment live"
+            },
+            {
+              "id": "W1D5-2",
+              "title": "Run Lighthouse audit",
+              "duration": "1 hour",
+              "assignee": "Developer",
+              "dependencies": ["W1D5-1"],
+              "deliverable": "Lighthouse scores documented"
+            },
+            {
+              "id": "W1D5-3",
+              "title": "Measure API response times",
+              "duration": "2 hours",
+              "assignee": "Developer",
+              "dependencies": ["W1D5-1"],
+              "deliverable": "API response times measured"
+            },
+            {
+              "id": "W1D5-4",
+              "title": "Optimize slow endpoints",
+              "duration": "2 hours",
+              "assignee": "Developer",
+              "dependencies": ["W1D5-3"],
+              "deliverable": "Slow endpoints optimized"
+            },
+            {
+              "id": "W1D5-5",
+              "title": "Measure Core Web Vitals",
+              "duration": "1 hour",
+              "assignee": "Developer",
+              "dependencies": ["W1D5-1"],
+              "deliverable": "Core Web Vitals measured"
+            },
+            {
+              "id": "W1D5-6",
+              "title": "Document performance metrics",
+              "duration": "1 hour",
+              "assignee": "Developer",
+              "dependencies": ["W1D5-2", "W1D5-3", "W1D5-4", "W1D5-5"],
+              "deliverable": "Performance report created"
+            }
+          ]
+        }
+      ]
     },
     {
-      "task_id": "CS-P1-002",
-      "priority": "P0",
-      "category": "Security",
-      "phase": 1,
-      "estimated_agent_hours": 12,
-      "dependencies": [],
-      "assignable_agent_type": "Code Generation",
-      "description": "Enforce private Blob access and signed URL retrieval for all uploaded documents and reports.",
-      "acceptance_criteria": ["Blob uploads are private", "Signed URLs expire and are ownership-validated", "Public direct access to sensitive files is blocked"],
-      "files_to_modify": ["lib/storage/blob.ts", "app/api/documents/upload/route.ts", "app/api/documents/[id]/route.ts", "app/api/email/send/route.ts"],
-      "technical_approach": "Switch Blob access mode, add signed URL helper with TTL, and resolve file access through authenticated server routes.",
-      "validation_method": "Attempt unauthenticated URL access should fail; authenticated signed URL works within TTL only.",
-      "risks_blockers": "May require document metadata normalization first for robust ownership checks."
+      "phase": "Week 2: Manual Testing & Staging",
+      "duration": "5 days",
+      "priority": "High",
+      "tasks": [
+        {
+          "day": 6,
+          "title": "Desktop Browser Testing",
+          "duration": "8 hours",
+          "priority": "High",
+          "tasks": [
+            {
+              "id": "W2D6-1",
+              "title": "Test Chrome (latest 2 versions)",
+              "duration": "2 hours",
+              "assignee": "QA Engineer",
+              "dependencies": [],
+              "deliverable": "Chrome testing complete"
+            },
+            {
+              "id": "W2D6-2",
+              "title": "Test Firefox (latest 2 versions)",
+              "duration": "2 hours",
+              "assignee": "QA Engineer",
+              "dependencies": [],
+              "deliverable": "Firefox testing complete"
+            },
+            {
+              "id": "W2D6-3",
+              "title": "Test Safari (latest 2 versions)",
+              "duration": "2 hours",
+              "assignee": "QA Engineer",
+              "dependencies": [],
+              "deliverable": "Safari testing complete"
+            },
+            {
+              "id": "W2D6-4",
+              "title": "Test Edge (latest 2 versions)",
+              "duration": "2 hours",
+              "assignee": "QA Engineer",
+              "dependencies": [],
+              "deliverable": "Edge testing complete"
+            }
+          ]
+        },
+        {
+          "day": 7,
+          "title": "Mobile & Tablet Testing",
+          "duration": "8 hours",
+          "priority": "High",
+          "tasks": [
+            {
+              "id": "W2D7-1",
+              "title": "Test iOS Safari",
+              "duration": "3 hours",
+              "assignee": "QA Engineer",
+              "dependencies": [],
+              "deliverable": "iOS Safari testing complete"
+            },
+            {
+              "id": "W2D7-2",
+              "title": "Test Android Chrome",
+              "duration": "3 hours",
+              "assignee": "QA Engineer",
+              "dependencies": [],
+              "deliverable": "Android Chrome testing complete"
+            },
+            {
+              "id": "W2D7-3",
+              "title": "Test tablets",
+              "duration": "2 hours",
+              "assignee": "QA Engineer",
+              "dependencies": [],
+              "deliverable": "Tablet testing complete"
+            }
+          ]
+        },
+        {
+          "day": 8,
+          "title": "Accessibility Testing",
+          "duration": "8 hours",
+          "priority": "High",
+          "tasks": [
+            {
+              "id": "W2D8-1",
+              "title": "Screen reader testing",
+              "duration": "4 hours",
+              "assignee": "QA Engineer",
+              "dependencies": [],
+              "deliverable": "Screen reader testing complete"
+            },
+            {
+              "id": "W2D8-2",
+              "title": "Keyboard navigation testing",
+              "duration": "2 hours",
+              "assignee": "QA Engineer",
+              "dependencies": [],
+              "deliverable": "Keyboard navigation verified"
+            },
+            {
+              "id": "W2D8-3",
+              "title": "Color contrast validation",
+              "duration": "1 hour",
+              "assignee": "QA Engineer",
+              "dependencies": [],
+              "deliverable": "Color contrast verified"
+            },
+            {
+              "id": "W2D8-4",
+              "title": "Automated accessibility audit",
+              "duration": "1 hour",
+              "assignee": "QA Engineer",
+              "dependencies": [],
+              "deliverable": "Accessibility audit complete"
+            }
+          ]
+        },
+        {
+          "day": 9,
+          "title": "Security Testing",
+          "duration": "8 hours",
+          "priority": "Critical",
+          "tasks": [
+            {
+              "id": "W2D9-1",
+              "title": "Manual security testing",
+              "duration": "4 hours",
+              "assignee": "Developer",
+              "dependencies": [],
+              "deliverable": "Manual security tests complete"
+            },
+            {
+              "id": "W2D9-2",
+              "title": "Automated security scanning",
+              "duration": "2 hours",
+              "assignee": "Developer",
+              "dependencies": [],
+              "deliverable": "Security scan complete"
+            },
+            {
+              "id": "W2D9-3",
+              "title": "Fix critical security issues",
+              "duration": "2 hours",
+              "assignee": "Developer",
+              "dependencies": ["W2D9-1", "W2D9-2"],
+              "deliverable": "Critical issues fixed"
+            }
+          ]
+        },
+        {
+          "day": 10,
+          "title": "Staging Deployment & UAT",
+          "duration": "8 hours",
+          "priority": "High",
+          "tasks": [
+            {
+              "id": "W2D10-1",
+              "title": "Deploy to staging environment",
+              "duration": "2 hours",
+              "assignee": "DevOps Engineer",
+              "dependencies": [],
+              "deliverable": "Staging deployed"
+            },
+            {
+              "id": "W2D10-2",
+              "title": "Configure staging services",
+              "duration": "2 hours",
+              "assignee": "DevOps Engineer",
+              "dependencies": ["W2D10-1"],
+              "deliverable": "Staging services configured"
+            },
+            {
+              "id": "W2D10-3",
+              "title": "User acceptance testing",
+              "duration": "3 hours",
+              "assignee": "QA Engineer",
+              "dependencies": ["W2D10-2"],
+              "deliverable": "UAT complete"
+            },
+            {
+              "id": "W2D10-4",
+              "title": "Smoke testing",
+              "duration": "1 hour",
+              "assignee": "QA Engineer",
+              "dependencies": ["W2D10-3"],
+              "deliverable": "Smoke tests passed"
+            }
+          ]
+        }
+      ]
     },
     {
-      "task_id": "CS-P1-003",
-      "priority": "P0",
-      "category": "Security",
-      "phase": 1,
-      "estimated_agent_hours": 14,
-      "dependencies": [],
-      "assignable_agent_type": "Code Generation",
-      "description": "Add resource ownership checks to all document/comparable routes.",
-      "acceptance_criteria": ["Every appraisal-linked endpoint validates ownership", "Cross-tenant access returns 403", "Ownership checks are covered by tests"],
-      "files_to_modify": ["app/api/comparables/[id]/route.ts", "app/api/comparables/search/route.ts", "app/api/documents/[id]/route.ts", "app/api/documents/extract/route.ts", "app/api/documents/upload/route.ts", "lib/utils/auth.ts"],
-      "technical_approach": "Add lookup helpers for resource-to-appraisal mapping and enforce `requireAppraisalOwnership` before mutate/read operations.",
-      "validation_method": "Integration tests with two users and shared IDs to confirm denial paths.",
-      "risks_blockers": "Needs stable document/comparable ID relation model."
-    },
-    {
-      "task_id": "CS-P1-004",
-      "priority": "P0",
-      "category": "Bug Fix",
-      "phase": 1,
-      "estimated_agent_hours": 4,
-      "dependencies": [],
-      "assignable_agent_type": "Code Generation",
-      "description": "Fix broken wizard/report routing to use `/dashboard/appraisals/*` consistently.",
-      "acceptance_criteria": ["No router.push target points to invalid `/appraisals/*` paths", "Step transitions and preview routes resolve correctly", "No 404 from wizard navigation"],
-      "files_to_modify": ["app/_components/wizard/WizardLayout.tsx", "app/_components/wizard/Step7Review.tsx", "app/_components/wizard/Step8Generate.tsx"],
-      "technical_approach": "Introduce centralized route builder utility and replace hardcoded strings.",
-      "validation_method": "E2E wizard navigation smoke test.",
-      "risks_blockers": "None."
-    },
-    {
-      "task_id": "CS-P1-005",
-      "priority": "P0",
-      "category": "Feature",
-      "phase": 1,
-      "estimated_agent_hours": 10,
-      "dependencies": ["CS-P1-003"],
-      "assignable_agent_type": "Code Generation",
-      "description": "Unify document extraction API/UI contract and persist extraction-ready document metadata.",
-      "acceptance_criteria": ["Step4 sends documentUrl + documentType expected by API", "Extraction response maps to form fields deterministically", "Extraction failures return structured errors"],
-      "files_to_modify": ["app/_components/wizard/Step4DocumentUpload.tsx", "app/api/documents/extract/route.ts", "app/_components/DocumentPreview.tsx"],
-      "technical_approach": "Store uploaded document metadata in appraisal/document model and call extraction using canonical URL/type payload.",
-      "validation_method": "Upload + extract flow test across repair estimate and insurance docs.",
-      "risks_blockers": "Will surface downstream type/schema mismatches requiring follow-up fixes."
-    },
-    {
-      "task_id": "CS-P1-006",
-      "priority": "P0",
-      "category": "Architecture",
-      "phase": 1,
-      "estimated_agent_hours": 6,
-      "dependencies": [],
-      "assignable_agent_type": "Database",
-      "description": "Generate and commit baseline Drizzle migrations, including missing indexes.",
-      "acceptance_criteria": ["Migration directory exists and is committed", "Indexes for user_id/appraisal_id/status are created", "Fresh DB can migrate from zero state"],
-      "files_to_modify": ["drizzle.config.ts", "lib/db/schema.ts", "drizzle/*"],
-      "technical_approach": "Define missing index declarations, generate migrations, validate up/down strategy in staging.",
-      "validation_method": "Run migration on empty DB and verify schema parity checks.",
-      "risks_blockers": "Requires stable DB URL in env."
-    },
-    {
-      "task_id": "CS-P1-007",
-      "priority": "P0",
-      "category": "Security",
-      "phase": 1,
-      "estimated_agent_hours": 8,
-      "dependencies": ["CS-P1-003"],
-      "assignable_agent_type": "Code Generation",
-      "description": "Add rate limiting and abuse protection on sensitive API routes.",
-      "acceptance_criteria": ["Rate limits exist for auth-adjacent, upload, extraction, checkout, webhook endpoints", "429 responses are consistent and logged", "No regression on normal usage"],
-      "files_to_modify": ["app/api/**/*", "lib/utils/*"],
-      "technical_approach": "Implement middleware/route-level limiter with per-user/IP buckets and configurable thresholds.",
-      "validation_method": "Synthetic burst tests confirm throttling behavior.",
-      "risks_blockers": "May require Redis/edge store selection."
-    },
-    {
-      "task_id": "CS-P1-008",
-      "priority": "P0",
-      "category": "Feature",
-      "phase": 1,
-      "estimated_agent_hours": 10,
-      "dependencies": ["CS-P1-004", "CS-P1-005"],
-      "assignable_agent_type": "Code Generation",
-      "description": "Repair wizard state management so each step persists and auto-save works with real changes.",
-      "acceptance_criteria": ["Step inputs call shared `onChange` handlers", "Auto-save writes actual delta state every 30s", "Resume from saved draft restores all step data"],
-      "files_to_modify": ["app/(dashboard)/appraisals/[id]/wizard/page.tsx", "app/_components/wizard/Step1VehicleInfo.tsx", "app/_components/wizard/Step2OwnerInfo.tsx", "app/_components/wizard/Step3AccidentDetails.tsx", "app/_components/wizard/WizardLayout.tsx"],
-      "technical_approach": "Move to normalized form state contract with typed per-step adapters and controlled components.",
-      "validation_method": "E2E save/refresh/resume scenario across 8 steps.",
-      "risks_blockers": "Requires alignment of JSON shapes with DB schema."
-    },
-    {
-      "task_id": "CS-P1-009",
-      "priority": "P0",
-      "category": "Testing",
-      "phase": 1,
-      "estimated_agent_hours": 20,
-      "dependencies": ["CS-P1-001", "CS-P1-003", "CS-P1-008"],
-      "assignable_agent_type": "Testing",
-      "description": "Create baseline automated test harness (unit + integration) for security and core workflows.",
-      "acceptance_criteria": ["Test runner configured in package scripts", "Auth/ownership tests implemented", "Calculation and extraction contract tests implemented"],
-      "files_to_modify": ["package.json", "tests/**/*", "vitest.config.ts"],
-      "technical_approach": "Adopt Vitest + API integration harness; seed deterministic fixtures.",
-      "validation_method": "CI test command passes and fails on intentional regressions.",
-      "risks_blockers": "Needs test DB strategy."
-    },
-    {
-      "task_id": "CS-P2-001",
-      "priority": "P0",
-      "category": "Feature",
-      "phase": 2,
-      "estimated_agent_hours": 48,
-      "dependencies": ["CS-P1-006", "CS-P1-008"],
-      "assignable_agent_type": "Code Generation",
-      "description": "Implement full 14-section React-PDF appraisal report pipeline per `.agent` spec.",
-      "acceptance_criteria": ["All required report sections render", "Page headers/footers and pagination present", "Report meets minimum content depth and includes legal sections"],
-      "files_to_modify": ["lib/pdf/generator.tsx", "lib/pdf/components/*", "app/api/appraisals/[id]/generate-pdf/route.ts"],
-      "technical_approach": "Split PDF into composable section components with strict typed input assembler.",
-      "validation_method": "Golden PDF regression checks and manual legal-content review.",
-      "risks_blockers": "Needs finalized narrative and citation engines."
-    },
-    {
-      "task_id": "CS-P2-002",
-      "priority": "P0",
-      "category": "Feature",
-      "phase": 2,
-      "estimated_agent_hours": 24,
-      "dependencies": ["CS-P2-001"],
-      "assignable_agent_type": "Code Generation",
-      "description": "Implement narrative engines (repair analysis, market stigma, severity justification insertion).",
-      "acceptance_criteria": ["Narrative modules generate deterministic text from appraisal data", "PDF includes narrative sections", "State-law and severity narratives match source rules"],
-      "files_to_modify": ["lib/narratives/*", "lib/pdf/generator.tsx", "lib/calculations/severity-classifier.ts"],
-      "technical_approach": "Use typed template functions with explicit rule-based branching from master schema.",
-      "validation_method": "Snapshot tests for GA/NC/default and severity levels 1-5.",
-      "risks_blockers": "Requires clear editorial baseline from SNAPCLAIM sample."
-    },
-    {
-      "task_id": "CS-P2-003",
-      "priority": "P0",
-      "category": "Feature",
-      "phase": 2,
-      "estimated_agent_hours": 12,
-      "dependencies": ["CS-P1-005"],
-      "assignable_agent_type": "Code Generation",
-      "description": "Implement VIN decode integration and equipment enrichment.",
-      "acceptance_criteria": ["Valid VIN triggers decode API", "Decoded fields populate and remain user-editable", "Failures degrade gracefully to manual entry"],
-      "files_to_modify": ["app/_components/wizard/Step1VehicleInfo.tsx", "app/api/vin/decode/route.ts", "lib/validation/schemas.ts"],
-      "technical_approach": "Add server-side VIN decode proxy and normalization layer.",
-      "validation_method": "Unit tests for VIN parsing + integration tests for decode success/failure.",
-      "risks_blockers": "External VIN API reliability."
-    },
-    {
-      "task_id": "CS-P2-004",
-      "priority": "P0",
-      "category": "Feature",
-      "phase": 2,
-      "estimated_agent_hours": 16,
-      "dependencies": ["CS-P1-003", "CS-P1-006"],
-      "assignable_agent_type": "Database",
-      "description": "Implement normalized document metadata model and full document-library features.",
-      "acceptance_criteria": ["Documents tab lists type/name/size/date", "Preview/download/delete are ownership-safe", "Deleting removes Blob object and DB reference"],
-      "files_to_modify": ["lib/db/schema.ts", "app/(dashboard)/appraisals/[id]/documents/page.tsx", "app/api/documents/[id]/route.ts", "app/api/documents/upload/route.ts"],
-      "technical_approach": "Add documents table linked to appraisal/user and backfill existing URL fields.",
-      "validation_method": "Integration tests for upload->preview->delete lifecycle.",
-      "risks_blockers": "Requires migration and data backfill strategy."
-    },
-    {
-      "task_id": "CS-P2-005",
-      "priority": "P0",
-      "category": "Feature",
-      "phase": 2,
-      "estimated_agent_hours": 14,
-      "dependencies": ["CS-P1-006"],
-      "assignable_agent_type": "Code Generation",
-      "description": "Harden comparables search with production actor, retries, and min-count expansion logic.",
-      "acceptance_criteria": ["Apify actor ID configurable and non-placeholder", "Search expands radius/tolerance when <3 results", "Pre/post-accident filters correctly enforced"],
-      "files_to_modify": ["lib/scraping/apify-search.ts", "app/api/comparables/search/route.ts", "lib/env.ts"],
-      "technical_approach": "Implement resilient search loop with bounded retries and fallback controls.",
-      "validation_method": "Mocked API tests proving min/max comp behavior and timeout handling.",
-      "risks_blockers": "Apify usage cost controls must be tuned."
-    },
-    {
-      "task_id": "CS-P2-006",
-      "priority": "P0",
-      "category": "Feature",
-      "phase": 2,
-      "estimated_agent_hours": 8,
-      "dependencies": ["CS-P1-008"],
-      "assignable_agent_type": "Code Generation",
-      "description": "Finalize valuation output correctness (including dvPercentOfRepair) and validation.",
-      "acceptance_criteria": ["All required valuation fields computed", "Server rejects invalid comp sets", "Median and constants are test-verified"],
-      "files_to_modify": ["lib/calculations/valuation.ts", "app/api/calculations/route.ts", "lib/validation/schemas.ts"],
-      "technical_approach": "Use strict DTOs + guard clauses and derive repair-percent from accident details.",
-      "validation_method": "Unit + property tests for constants, median, and percentage outputs.",
-      "risks_blockers": "Dependent on clean input data model."
-    },
-    {
-      "task_id": "CS-P2-007",
-      "priority": "P1",
-      "category": "Feature",
-      "phase": 2,
-      "estimated_agent_hours": 16,
-      "dependencies": ["CS-P1-008"],
-      "assignable_agent_type": "Code Generation",
-      "description": "Implement missing appraisal management actions: duplicate, archive, share, bulk download.",
-      "acceptance_criteria": ["Duplicate creates full draft clone", "Archive is soft delete and hidden by default", "Share creates expiring signed URL", "Bulk download returns zip of selected reports"],
-      "files_to_modify": ["app/(dashboard)/appraisals/[id]/page.tsx", "app/(dashboard)/dashboard/page.tsx", "app/api/appraisals/*", "app/api/share/*"],
-      "technical_approach": "Add action routes with ownership checks and background zip generation for bulk downloads.",
-      "validation_method": "E2E tests for each action and permission checks.",
-      "risks_blockers": "Bulk download may require async job queue."
-    },
-    {
-      "task_id": "CS-P2-008",
-      "priority": "P0",
-      "category": "Feature",
-      "phase": 2,
-      "estimated_agent_hours": 18,
-      "dependencies": ["CS-P2-001", "CS-P2-002"],
-      "assignable_agent_type": "Code Generation",
-      "description": "Complete document template engine with all required templates and placeholder substitution guarantees.",
-      "acceptance_criteria": ["All 7 templates implemented", "No unresolved {{placeholders}} remain", "State/role gating works"],
-      "files_to_modify": ["lib/templates/*", "app/api/templates/[type]/route.ts"],
-      "technical_approach": "Introduce shared template renderer with strict key coverage checks and fallback values.",
-      "validation_method": "Snapshot tests per template + placeholder scan assertions.",
-      "risks_blockers": "Legal copy review needed for jurisdiction language."
-    },
-    {
-      "task_id": "CS-P2-009",
-      "priority": "P1",
-      "category": "Feature",
-      "phase": 2,
-      "estimated_agent_hours": 10,
-      "dependencies": ["CS-P2-008"],
-      "assignable_agent_type": "Code Generation",
-      "description": "Add DOCX export pipeline for templates.",
-      "acceptance_criteria": ["Template endpoint can return DOCX for supported types", "DOCX formatting preserves key sections", "Downloads work for large docs"],
-      "files_to_modify": ["lib/templates/*", "app/api/templates/[type]/route.ts"],
-      "technical_approach": "Use `docx` package with template->doc conversion service.",
-      "validation_method": "Generated DOCX opens in Word/Google Docs without corruption.",
-      "risks_blockers": "Formatting parity with PDF templates may require iteration."
-    },
-    {
-      "task_id": "CS-P2-010",
-      "priority": "P0",
-      "category": "Security",
-      "phase": 2,
-      "estimated_agent_hours": 12,
-      "dependencies": ["CS-P1-001"],
-      "assignable_agent_type": "Code Generation",
-      "description": "Implement RBAC enforcement across API and UI capability surfaces.",
-      "acceptance_criteria": ["Role policy matrix defined", "Role-restricted endpoints return 403", "UI hides/protects inaccessible actions"],
-      "files_to_modify": ["lib/utils/auth.ts", "app/api/**/*", "app/(dashboard)/**/*"],
-      "technical_approach": "Introduce permission helpers per role and central route guards.",
-      "validation_method": "Role-based integration tests across individual/appraiser/attorney/body_shop/admin.",
-      "risks_blockers": "Business policy confirmation required for final entitlement matrix."
-    },
-    {
-      "task_id": "CS-P2-011",
-      "priority": "P0",
-      "category": "Feature",
-      "phase": 2,
-      "estimated_agent_hours": 12,
-      "dependencies": ["CS-P1-001", "CS-P1-006"],
-      "assignable_agent_type": "Code Generation",
-      "description": "Fix payment env model, entitlement updates, and webhook idempotency/role mapping.",
-      "acceptance_criteria": ["Price IDs validated at startup", "Webhook processing idempotent", "Plan->role and entitlement transitions implemented"],
-      "files_to_modify": ["app/api/checkout/route.ts", "app/api/webhooks/stripe/route.ts", "lib/env.ts", "lib/payments/stripe.ts"],
-      "technical_approach": "Normalize env names, add event dedupe store, and explicit entitlement state machine.",
-      "validation_method": "Stripe webhook replay tests and checkout integration tests.",
-      "risks_blockers": "Requires Stripe test fixtures and webhook secrets."
-    },
-    {
-      "task_id": "CS-P2-012",
-      "priority": "P1",
-      "category": "Feature",
-      "phase": 2,
-      "estimated_agent_hours": 10,
-      "dependencies": ["CS-P2-011"],
-      "assignable_agent_type": "Code Generation",
-      "description": "Complete SendGrid workflows: welcome, payment confirmation, renewal reminders, failed payment alerts.",
-      "acceptance_criteria": ["All required email types send via templates", "Events are triggered from payment/user lifecycle", "Ownership/privacy constraints maintained"],
-      "files_to_modify": ["lib/email/sendgrid.ts", "app/api/email/send/route.ts", "app/api/webhooks/stripe/route.ts"],
-      "technical_approach": "Create event-driven email dispatcher with template map and retryable send jobs.",
-      "validation_method": "Email integration tests with mocked SendGrid and event fixtures.",
-      "risks_blockers": "Production sender domain verification needed."
-    },
-    {
-      "task_id": "CS-P3-001",
-      "priority": "P1",
-      "category": "Feature",
-      "phase": 3,
-      "estimated_agent_hours": 14,
-      "dependencies": ["CS-P2-010"],
-      "assignable_agent_type": "Code Generation",
-      "description": "Implement professional role feature surfaces (appraiser USPAP/signature, attorney team management, body shop white-label controls).",
-      "acceptance_criteria": ["Role-specific UI modules are available and secured", "USPAP fields render for appraisers only", "Attorney/body_shop scoped features enabled"],
-      "files_to_modify": ["app/(dashboard)/**/*", "lib/db/schema.ts", "lib/pdf/generator.tsx"],
-      "technical_approach": "Add modular feature flags by role and extend profile/data schema for role-specific settings.",
-      "validation_method": "Role matrix E2E tests.",
-      "risks_blockers": "Requires policy decisions on attorney team model."
-    },
-    {
-      "task_id": "CS-P3-002",
-      "priority": "P1",
-      "category": "Feature",
-      "phase": 3,
-      "estimated_agent_hours": 12,
-      "dependencies": ["CS-P2-005"],
-      "assignable_agent_type": "Code Generation",
-      "description": "Implement advanced before/after image comparison logic for requirement-level completeness.",
-      "acceptance_criteria": ["Multiple images supported", "Before/after comparison summary generated", "Confidence and panel suggestions surfaced"],
-      "files_to_modify": ["lib/ai/analyze-images.ts", "app/_components/wizard/Step4DocumentUpload.tsx", "lib/ai/schemas.ts"],
-      "technical_approach": "Batch image handling with deterministic prompt framing and output normalization.",
-      "validation_method": "Fixture-based image extraction regression suite.",
-      "risks_blockers": "Model variability requires robust parsing fallback."
-    },
-    {
-      "task_id": "CS-P3-003",
-      "priority": "P2",
-      "category": "Feature",
-      "phase": 3,
-      "estimated_agent_hours": 16,
-      "dependencies": ["CS-P2-001"],
-      "assignable_agent_type": "Documentation",
-      "description": "Build educational resources and negotiation guidance module.",
-      "acceptance_criteria": ["Resources pages exist and are navigable", "State-specific and methodology guidance included", "Content is searchable by topic"],
-      "files_to_modify": ["app/resources/*", "app/(dashboard)/layout.tsx", "lib/content/*"],
-      "technical_approach": "Static content modules with markdown-driven topic taxonomy.",
-      "validation_method": "Content QA checklist and route smoke tests.",
-      "risks_blockers": "Legal review recommended before publication."
-    },
-    {
-      "task_id": "CS-P3-004",
-      "priority": "P1",
-      "category": "Performance",
-      "phase": 3,
-      "estimated_agent_hours": 10,
-      "dependencies": ["CS-P2-001", "CS-P2-005"],
-      "assignable_agent_type": "Code Generation",
-      "description": "Performance tuning pass for API hotspots, comparables search latency, and PDF generation throughput.",
-      "acceptance_criteria": ["Dashboard/API p95 latency baselines established", "Comparable search under 15s target in test environment", "PDF generation under 45s for representative sample"],
-      "files_to_modify": ["app/api/**/*", "lib/pdf/*", "lib/scraping/*"],
-      "technical_approach": "Add timed instrumentation, optimize query/data transforms, and parallelize heavy operations where safe.",
-      "validation_method": "Benchmark script reports and tracked p95 metrics.",
-      "risks_blockers": "External API variability can skew benchmarks."
-    },
-    {
-      "task_id": "CS-P4-001",
-      "priority": "P0",
-      "category": "Testing",
-      "phase": 4,
-      "estimated_agent_hours": 36,
-      "dependencies": ["CS-P2-001", "CS-P2-004", "CS-P2-011"],
-      "assignable_agent_type": "Testing",
-      "description": "Deliver full test coverage pack (unit + integration + E2E + browser automation for critical flows).",
-      "acceptance_criteria": ["Critical-path E2E suite passes", "Auth/ownership/security test scenarios pass", "PDF/template/payment workflows tested end-to-end"],
-      "files_to_modify": ["tests/**/*", "package.json", "playwright.config.ts"],
-      "technical_approach": "Add Playwright-based browser suite with deterministic fixtures and parallel shards.",
-      "validation_method": "CI runs full matrix with artifact capture on failures.",
-      "risks_blockers": "Needs stable seeded environment."
-    },
-    {
-      "task_id": "CS-P4-002",
-      "priority": "P1",
-      "category": "Security",
-      "phase": 4,
-      "estimated_agent_hours": 12,
-      "dependencies": ["CS-P1-001", "CS-P1-002", "CS-P1-003", "CS-P1-007"],
-      "assignable_agent_type": "Testing",
-      "description": "Run security hardening sweep (OWASP-focused) and remediate findings.",
-      "acceptance_criteria": ["No high/critical unresolved security findings", "Webhook/auth/upload abuse tests documented", "Security logging coverage expanded"],
-      "files_to_modify": ["app/api/**/*", "lib/utils/*", "docs/security.md"],
-      "technical_approach": "Automate threat checklist and targeted negative tests for high-risk endpoints.",
-      "validation_method": "Security regression report with pass/fail evidence.",
-      "risks_blockers": "Potential late-breaking P0 findings."
-    },
-    {
-      "task_id": "CS-P4-003",
-      "priority": "P1",
-      "category": "Performance",
-      "phase": 4,
-      "estimated_agent_hours": 8,
-      "dependencies": ["CS-P3-004"],
-      "assignable_agent_type": "Code Generation",
-      "description": "Implement bundle/performance budgets and alerts.",
-      "acceptance_criteria": ["Bundle-size budget checks in CI", "Lighthouse or equivalent baselines stored", "Regressions fail CI thresholds"],
-      "files_to_modify": ["package.json", "next.config.js", "scripts/perf/*"],
-      "technical_approach": "Add analysis tooling and enforce thresholds in pipeline.",
-      "validation_method": "Intentional regression triggers failing check.",
-      "risks_blockers": "Threshold calibration needed."
-    },
-    {
-      "task_id": "CS-P4-004",
-      "priority": "P1",
-      "category": "Documentation",
-      "phase": 4,
-      "estimated_agent_hours": 10,
-      "dependencies": ["CS-P4-001", "CS-P4-002"],
-      "assignable_agent_type": "Documentation",
-      "description": "Produce operational runbooks (deploy, rollback, migration, incident response, key rotation).",
-      "acceptance_criteria": ["Runbooks exist and are versioned", "On-call playbook includes critical failure paths", "External service setup docs are complete"],
-      "files_to_modify": ["docs/runbooks/*", "README.md"],
-      "technical_approach": "Codify release and recovery procedures aligned with tested workflows.",
-      "validation_method": "Tabletop exercise using runbook steps.",
-      "risks_blockers": "Requires final architecture stabilization."
-    },
-    {
-      "task_id": "CS-P4-005",
-      "priority": "P0",
-      "category": "Testing",
-      "phase": 4,
-      "estimated_agent_hours": 8,
-      "dependencies": ["CS-P4-001", "CS-P4-002", "CS-P4-003", "CS-P4-004"],
-      "assignable_agent_type": "Browser Testing",
-      "description": "Execute production-readiness launch rehearsal with synthetic user journeys.",
-      "acceptance_criteria": ["Full signup->appraisal->payment->report->email flow succeeds", "All launch blockers closed or accepted with waiver", "Go-live checklist signed by human overseer"],
-      "files_to_modify": [".agent/reports/launch-rehearsal.md"],
-      "technical_approach": "Run scripted end-to-end rehearsal in staging and capture artifacts/screenshots.",
-      "validation_method": "Launch rehearsal report with timestamps, logs, and pass/fail matrix.",
-      "risks_blockers": "Requires stable staging credentials and external service quotas."
+      "phase": "Week 3: Production Deployment & Launch",
+      "duration": "3-5 days",
+      "priority": "Critical",
+      "tasks": [
+        {
+          "day": 11,
+          "title": "Production Setup (Part 1)",
+          "duration": "8 hours",
+          "priority": "Critical",
+          "tasks": [
+            {
+              "id": "W3D11-1",
+              "title": "Create production database",
+              "duration": "2 hours",
+              "assignee": "DevOps Engineer",
+              "dependencies": [],
+              "deliverable": "Production database created"
+            },
+            {
+              "id": "W3D11-2",
+              "title": "Configure production Clerk",
+              "duration": "2 hours",
+              "assignee": "DevOps Engineer",
+              "dependencies": [],
+              "deliverable": "Production Clerk configured"
+            },
+            {
+              "id": "W3D11-3",
+              "title": "Configure production Stripe",
+              "duration": "2 hours",
+              "assignee": "DevOps Engineer",
+              "dependencies": [],
+              "deliverable": "Production Stripe configured"
+            },
+            {
+              "id": "W3D11-4",
+              "title": "Configure production services",
+              "duration": "2 hours",
+              "assignee": "DevOps Engineer",
+              "dependencies": [],
+              "deliverable": "Production services configured"
+            }
+          ]
+        },
+        {
+          "day": 12,
+          "title": "Production Setup (Part 2)",
+          "duration": "8 hours",
+          "priority": "Critical",
+          "tasks": [
+            {
+              "id": "W3D12-1",
+              "title": "Set up production monitoring",
+              "duration": "2 hours",
+              "assignee": "DevOps Engineer",
+              "dependencies": [],
+              "deliverable": "Production monitoring configured"
+            },
+            {
+              "id": "W3D12-2",
+              "title": "Configure custom domain",
+              "duration": "1 hour",
+              "assignee": "DevOps Engineer",
+              "dependencies": [],
+              "deliverable": "Custom domain configured"
+            },
+            {
+              "id": "W3D12-3",
+              "title": "Create production environment variables",
+              "duration": "2 hours",
+              "assignee": "DevOps Engineer",
+              "dependencies": [],
+              "deliverable": "Environment variables configured"
+            },
+            {
+              "id": "W3D12-4",
+              "title": "Production deployment",
+              "duration": "2 hours",
+              "assignee": "DevOps Engineer",
+              "dependencies": ["W3D11-1", "W3D11-2", "W3D11-3", "W3D11-4", "W3D12-1", "W3D12-2", "W3D12-3"],
+              "deliverable": "Production deployed"
+            },
+            {
+              "id": "W3D12-5",
+              "title": "Document production setup",
+              "duration": "1 hour",
+              "assignee": "DevOps Engineer",
+              "dependencies": ["W3D12-4"],
+              "deliverable": "Production documentation updated"
+            }
+          ]
+        },
+        {
+          "day": 13,
+          "title": "Pre-Launch Verification",
+          "duration": "8 hours",
+          "priority": "Critical",
+          "tasks": [
+            {
+              "id": "W3D13-1",
+              "title": "Final smoke testing",
+              "duration": "2 hours",
+              "assignee": "QA Engineer",
+              "dependencies": ["W3D12-4"],
+              "deliverable": "Smoke tests passed"
+            },
+            {
+              "id": "W3D13-2",
+              "title": "Performance verification",
+              "duration": "1 hour",
+              "assignee": "Developer",
+              "dependencies": ["W3D12-4"],
+              "deliverable": "Performance verified"
+            },
+            {
+              "id": "W3D13-3",
+              "title": "Security verification",
+              "duration": "1 hour",
+              "assignee": "Developer",
+              "dependencies": ["W3D12-4"],
+              "deliverable": "Security verified"
+            },
+            {
+              "id": "W3D13-4",
+              "title": "Monitoring verification",
+              "duration": "1 hour",
+              "assignee": "DevOps Engineer",
+              "dependencies": ["W3D12-4"],
+              "deliverable": "Monitoring verified"
+            },
+            {
+              "id": "W3D13-5",
+              "title": "Legal compliance verification",
+              "duration": "1 hour",
+              "assignee": "Product Manager",
+              "dependencies": [],
+              "deliverable": "Legal compliance verified"
+            },
+            {
+              "id": "W3D13-6",
+              "title": "Create launch checklist",
+              "duration": "1 hour",
+              "assignee": "Product Manager",
+              "dependencies": [],
+              "deliverable": "Launch checklist created"
+            },
+            {
+              "id": "W3D13-7",
+              "title": "Final team review",
+              "duration": "1 hour",
+              "assignee": "Product Manager",
+              "dependencies": ["W3D13-1", "W3D13-2", "W3D13-3", "W3D13-4", "W3D13-5", "W3D13-6"],
+              "deliverable": "Team approval obtained"
+            }
+          ]
+        },
+        {
+          "day": 14,
+          "title": "Launch Day",
+          "duration": "8 hours",
+          "priority": "Critical",
+          "tasks": [
+            {
+              "id": "W3D14-1",
+              "title": "Launch preparation",
+              "duration": "2 hours",
+              "assignee": "Product Manager",
+              "dependencies": ["W3D13-7"],
+              "deliverable": "Launch prepared"
+            },
+            {
+              "id": "W3D14-2",
+              "title": "Go live",
+              "duration": "1 hour",
+              "assignee": "DevOps Engineer",
+              "dependencies": ["W3D14-1"],
+              "deliverable": "Production live"
+            },
+            {
+              "id": "W3D14-3",
+              "title": "Post-launch monitoring (Day 1)",
+              "duration": "5 hours",
+              "assignee": "Developer",
+              "dependencies": ["W3D14-2"],
+              "deliverable": "Day 1 monitoring complete"
+            }
+          ]
+        },
+        {
+          "day": 15,
+          "title": "Post-Launch Monitoring",
+          "duration": "4 hours",
+          "priority": "High",
+          "tasks": [
+            {
+              "id": "W3D15-1",
+              "title": "Day 2 monitoring",
+              "duration": "3 hours",
+              "assignee": "Developer",
+              "dependencies": ["W3D14-3"],
+              "deliverable": "Day 2 monitoring complete"
+            },
+            {
+              "id": "W3D15-2",
+              "title": "Post-launch review",
+              "duration": "1 hour",
+              "assignee": "Product Manager",
+              "dependencies": ["W3D15-1"],
+              "deliverable": "Post-launch review complete"
+            }
+          ]
+        }
+      ]
     }
-  ]
+  ],
+  "milestones": [
+    {
+      "name": "All Integration Tests Passing",
+      "date": "End of Week 1",
+      "criteria": "83/83 tests passing"
+    },
+    {
+      "name": "Manual Testing Complete",
+      "date": "End of Week 2",
+      "criteria": "Browser, accessibility, security testing complete"
+    },
+    {
+      "name": "Staging Deployed",
+      "date": "Day 10",
+      "criteria": "Staging environment live and tested"
+    },
+    {
+      "name": "Production Deployed",
+      "date": "Day 12",
+      "criteria": "Production environment live"
+    },
+    {
+      "name": "Launch",
+      "date": "Day 14",
+      "criteria": "Production live to users"
+    }
+  ],
+  "risks": [
+    {
+      "risk": "Third-Party Service Outage",
+      "probability": "Low",
+      "impact": "High",
+      "mitigation": "Monitor service status, implement graceful degradation"
+    },
+    {
+      "risk": "Payment Processing Issues",
+      "probability": "Low",
+      "impact": "High",
+      "mitigation": "Thorough Stripe testing, monitor webhook delivery"
+    },
+    {
+      "risk": "Performance Issues Under Load",
+      "probability": "Medium",
+      "impact": "Medium",
+      "mitigation": "Load testing, monitor metrics, auto-scaling enabled"
+    },
+    {
+      "risk": "Security Vulnerability Discovered",
+      "probability": "Low",
+      "impact": "High",
+      "mitigation": "Professional security audit, incident response plan"
+    }
+  ],
+  "budget": {
+    "fixedMonthlyCosts": 100,
+    "variableCosts": "Based on usage",
+    "services": [
+      {"name": "Vercel Pro", "cost": 20},
+      {"name": "Neon Pro", "cost": 19},
+      {"name": "Clerk Pro", "cost": 25},
+      {"name": "Stripe", "cost": "2.9% + $0.30 per transaction"},
+      {"name": "Vercel Blob", "cost": "~$10/month"},
+      {"name": "Gemini API", "cost": "~$50/month"},
+      {"name": "Apify", "cost": "~$30/month"},
+      {"name": "SendGrid", "cost": "Free tier"},
+      {"name": "Sentry", "cost": "Free tier"},
+      {"name": "Uptime Robot", "cost": "Free tier"}
+    ]
+  }
 }

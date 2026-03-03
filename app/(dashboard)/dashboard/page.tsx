@@ -3,6 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatCurrency } from '@/lib/utils/formatting';
+import { Copy, Archive, Download, Share2, MoreVertical } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from '@/components/hooks/use-toast';
 
 interface Appraisal {
   id: string;
@@ -13,14 +23,18 @@ interface Appraisal {
   diminishedValue: number;
   createdAt: string;
   updatedAt: string;
+  reportPdfUrl?: string;
 }
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [appraisals, setAppraisals] = useState<Appraisal[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedAppraisals, setSelectedAppraisals] = useState<Set<string>>(new Set());
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAppraisals();
@@ -64,6 +78,162 @@ export default function DashboardPage() {
     router.push(`/dashboard/appraisals/${id}`);
   };
 
+  const handleDuplicate = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActionLoading(id);
+    try {
+      const response = await fetch(`/api/appraisals/${id}/duplicate`, {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        const duplicate = await response.json();
+        toast({
+          title: 'Appraisal duplicated',
+          description: 'A new draft has been created.',
+        });
+        fetchAppraisals();
+        router.push(`/dashboard/appraisals/${duplicate.id}/wizard?step=1`);
+      } else {
+        throw new Error('Failed to duplicate');
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to duplicate appraisal',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleArchive = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActionLoading(id);
+    try {
+      const response = await fetch(`/api/appraisals/${id}/archive`, {
+        method: 'PATCH',
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'Appraisal archived',
+          description: 'The appraisal has been moved to archived status.',
+        });
+        fetchAppraisals();
+      } else {
+        throw new Error('Failed to archive');
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to archive appraisal',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleShare = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActionLoading(id);
+    try {
+      const response = await fetch(`/api/appraisals/${id}/share`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expiresInHours: 24 }),
+      });
+
+      if (response.ok) {
+        const { shareUrl } = await response.json();
+        await navigator.clipboard.writeText(shareUrl);
+        toast({
+          title: 'Share link copied',
+          description: 'The link expires in 24 hours.',
+        });
+      } else {
+        throw new Error('Failed to create share link');
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to create share link',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleBulkDownload = async () => {
+    if (selectedAppraisals.size === 0) {
+      toast({
+        title: 'No appraisals selected',
+        description: 'Please select at least one appraisal to download.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setActionLoading('bulk');
+    try {
+      const response = await fetch('/api/appraisals/bulk-download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appraisalIds: Array.from(selectedAppraisals) }),
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `appraisal-reports-${Date.now()}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        toast({
+          title: 'Download started',
+          description: `Downloading ${selectedAppraisals.size} report(s).`,
+        });
+        setSelectedAppraisals(new Set());
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to download');
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to download reports',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const toggleSelectAppraisal = (id: string) => {
+    const newSelected = new Set(selectedAppraisals);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedAppraisals(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedAppraisals.size === filteredAppraisals.length) {
+      setSelectedAppraisals(new Set());
+    } else {
+      setSelectedAppraisals(new Set(filteredAppraisals.map((a) => a.id)));
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -96,7 +266,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters and Bulk Actions */}
       <div className="flex flex-col md:flex-row gap-4">
         <input
           type="text"
@@ -115,6 +285,16 @@ export default function DashboardPage() {
           <option value="complete">Complete</option>
           <option value="archived">Archived</option>
         </select>
+        {selectedAppraisals.size > 0 && (
+          <Button
+            onClick={handleBulkDownload}
+            disabled={actionLoading === 'bulk'}
+            variant="outline"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Download Selected ({selectedAppraisals.size})
+          </Button>
+        )}
       </div>
 
       {/* Appraisals Table */}
@@ -137,6 +317,15 @@ export default function DashboardPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-6 py-3 text-left">
+                  <Checkbox
+                    checked={
+                      filteredAppraisals.length > 0 &&
+                      selectedAppraisals.size === filteredAppraisals.length
+                    }
+                    onCheckedChange={toggleSelectAll}
+                  />
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Vehicle
                 </th>
@@ -161,6 +350,12 @@ export default function DashboardPage() {
                   className="hover:bg-gray-50 cursor-pointer"
                   onClick={() => handleViewAppraisal(appraisal.id)}
                 >
+                  <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selectedAppraisals.has(appraisal.id)}
+                      onCheckedChange={() => toggleSelectAppraisal(appraisal.id)}
+                    />
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
                       {appraisal.vehicleYear} {appraisal.vehicleMake} {appraisal.vehicleModel}
@@ -188,7 +383,31 @@ export default function DashboardPage() {
                     {new Date(appraisal.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button className="text-blue-600 hover:text-blue-900">View</button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="sm" disabled={actionLoading === appraisal.id}>
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={(e) => handleDuplicate(appraisal.id, e)}>
+                          <Copy className="w-4 h-4 mr-2" />
+                          Duplicate
+                        </DropdownMenuItem>
+                        {appraisal.status !== 'archived' && (
+                          <DropdownMenuItem onClick={(e) => handleArchive(appraisal.id, e)}>
+                            <Archive className="w-4 h-4 mr-2" />
+                            Archive
+                          </DropdownMenuItem>
+                        )}
+                        {appraisal.reportPdfUrl && (
+                          <DropdownMenuItem onClick={(e) => handleShare(appraisal.id, e)}>
+                            <Share2 className="w-4 h-4 mr-2" />
+                            Share
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </td>
                 </tr>
               ))}

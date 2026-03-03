@@ -14,7 +14,7 @@ export const vehicleInfoSchema = z.object({
   make: z.string().min(1, 'Make is required'),
   model: z.string().min(1, 'Model is required'),
   trim: z.string().optional(),
-  mileage: z.number().int().min(0, 'Mileage must be positive'),
+  mileage: z.number().int().min(1, 'Mileage must be positive'),
   preAccidentCondition: z.enum(['excellent', 'good', 'average', 'below_average']),
 });
 
@@ -38,7 +38,7 @@ export const accidentDetailsSchema = z.object({
   structuralDamage: z.boolean(),
   airbagDeployment: z.boolean(),
   framePulling: z.boolean(),
-  totalRepairCost: z.number().min(0, 'Repair cost must be positive'),
-  totalLaborHours: z.number().min(0, 'Labor hours must be positive'),
-  frameLaborHours: z.number().min(0, 'Frame labor hours must be positive'),
+  totalRepairCost: z.number().min(1, 'Repair cost must be positive'),
+  totalLaborHours: z.number().min(0, 'Labor hours must be non-negative'),
+  frameLaborHours: z.number().min(0, 'Frame labor hours must be non-negative'),
 });

@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "neon": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.neon.tech/mcp"
+      ],
+      "disabled": false,
+      "autoApprove": [
+        "create_project",
+        "create_branch",
+        "get_connection_string",
+        "run_sql_transaction",
+        "get_database_tables",
+        "describe_table_schema"
+      ]
+    }
+  }
+}

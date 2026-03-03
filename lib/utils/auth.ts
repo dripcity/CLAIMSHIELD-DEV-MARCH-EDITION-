@@ -2,6 +2,8 @@ import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { users, appraisals } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { hasPermission, type UserRole } from './rbac';
+import type { RolePermissions } from './rbac';
 
 export async function requireAuth() {
   const { userId } = await auth();
@@ -45,4 +47,37 @@ export async function checkEntitlement(user: typeof users.$inferSelect) {
   }
   
   return false;
+}
+
+/**
+ * Require a specific role permission
+ * Throws an error if the user doesn't have the required permission
+ */
+export async function requireRolePermission(
+  permission: keyof RolePermissions,
+  errorMessage?: string
+) {
+  const user = await requireAuth();
+  const userRole = (user.role || 'individual') as UserRole;
+  
+  if (!hasPermission(userRole, permission)) {
+    throw new Error(errorMessage || 'Forbidden: Insufficient permissions');
+  }
+  
+  return user;
+}
+
+/**
+ * Check if the current user has a specific permission
+ */
+export async function checkRolePermission(
+  permission: keyof RolePermissions
+): Promise<boolean> {
+  try {
+    const user = await requireAuth();
+    const userRole = (user.role || 'individual') as UserRole;
+    return hasPermission(userRole, permission);
+  } catch {
+    return false;
+  }
 }
