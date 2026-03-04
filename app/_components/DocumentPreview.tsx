@@ -17,7 +17,7 @@ interface Document {
 interface DocumentPreviewProps {
   documents: Document[];
   onRemove: (id: string) => void;
-  onExtract?: (id: string) => void;
+  onExtract?: (document: Document) => void;
   showExtractButton?: boolean;
 }
 
@@ -101,7 +101,7 @@ export function DocumentPreview({ documents, onRemove, onExtract, showExtractBut
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => onExtract(doc.id)}
+                    onClick={() => onExtract(doc)}
                     className="flex-1"
                   >
                     Extract Data

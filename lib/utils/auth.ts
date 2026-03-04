@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
-import { users, appraisals } from '@/lib/db/schema';
+import { users, appraisals, comparableVehicles } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 export async function requireAuth() {
@@ -32,6 +32,21 @@ export async function requireAppraisalOwnership(appraisalId: string, userId: str
   }
   
   return appraisal;
+}
+
+export async function requireComparableOwnership(comparableId: string, userId: string) {
+  const [comparable] = await db
+    .select()
+    .from(comparableVehicles)
+    .where(eq(comparableVehicles.id, comparableId));
+
+  if (!comparable) {
+    throw new Error('Comparable not found');
+  }
+
+  await requireAppraisalOwnership(comparable.appraisalId, userId);
+
+  return comparable;
 }
 
 export async function checkEntitlement(user: typeof users.$inferSelect) {

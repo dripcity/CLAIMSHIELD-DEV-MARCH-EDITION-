@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatCurrency } from '@/lib/utils/formatting';
-import { requireAuth } from '@/lib/utils/auth';
+import { getDashboardPreviewRoute } from '@/lib/utils/routes';
 
 interface Step8GenerateProps {
   appraisalId: string;
@@ -44,7 +44,7 @@ export function Step8Generate({ appraisalId, data }: Step8GenerateProps) {
   };
 
   const handleViewReport = () => {
-    router.push(`/appraisals/${appraisalId}/preview`);
+    router.push(getDashboardPreviewRoute(appraisalId));
   };
 
   return (
