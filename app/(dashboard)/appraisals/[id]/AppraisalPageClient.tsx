@@ -6,7 +6,7 @@ import { formatCurrency } from '@/lib/utils/formatting';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Car, DollarSign, FileText, Copy, Archive, Mail, Eye, Edit } from 'lucide-react';
+import { Car, DollarSign, FileText, Copy, Archive, Mail, Eye, Edit, CreditCard } from 'lucide-react';
 import { useToast } from '@/components/hooks/use-toast';
 
 interface AppraisalPageClientProps {
@@ -154,6 +154,31 @@ export default function AppraisalPageClient({ appraisal }: AppraisalPageClientPr
     router.push(`/dashboard/appraisals/${appraisal.id}/wizard?step=1`);
   };
 
+  const handlePurchaseReport = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/checkout/appraisal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appraisalId: appraisal.id }),
+      });
+
+      if (response.ok) {
+        const { url } = await response.json();
+        window.location.href = url; // Redirect to Stripe Checkout
+      } else {
+        throw new Error('Failed to create checkout session');
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to start checkout process',
+        variant: 'destructive',
+      });
+      setLoading(false);
+    }
+  };
+
   const { subjectVehicle, valuationResults, status, reportPdfUrl, createdAt, updatedAt } = appraisal;
 
   return (
@@ -169,7 +194,13 @@ export default function AppraisalPageClient({ appraisal }: AppraisalPageClientPr
             <Archive className="w-4 h-4 mr-2" />
             Archive
           </Button>
-          {status && status !== 'complete' && (
+          {status === 'draft' && valuationResults?.diminishedValue && (
+            <Button onClick={handlePurchaseReport} disabled={loading}>
+              <CreditCard className="w-4 h-4 mr-2" />
+              Purchase Report ($99)
+            </Button>
+          )}
+          {status && status !== 'complete' && status !== 'draft' && (
             <Button onClick={handleGeneratePDF} disabled={loading}>
               <FileText className="w-4 h-4 mr-2" />
               Generate PDF
@@ -269,13 +300,30 @@ export default function AppraisalPageClient({ appraisal }: AppraisalPageClientPr
           <div className="space-y-3">
             {status === 'draft' ? (
               <>
-                <p className="text-gray-600">
-                  Complete your appraisal by filling in all required fields in the wizard.
-                </p>
-                <Button variant="outline" onClick={handleContinueWizard}>
-                  <Edit className="w-4 h-4 mr-2" />
-                  Continue Wizard
-                </Button>
+                {valuationResults?.diminishedValue ? (
+                  <>
+                    <p className="text-gray-600">
+                      Your appraisal is complete! Purchase the full report to download and share with your insurance company.
+                    </p>
+                    <Button onClick={handlePurchaseReport} disabled={loading} className="w-full">
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Purchase Report - $99.00
+                    </Button>
+                    <p className="text-xs text-gray-500">
+                      Includes professional PDF report with state-specific legal citations
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-gray-600">
+                      Complete your appraisal by filling in all required fields in the wizard.
+                    </p>
+                    <Button variant="outline" onClick={handleContinueWizard}>
+                      <Edit className="w-4 h-4 mr-2" />
+                      Continue Wizard
+                    </Button>
+                  </>
+                )}
               </>
             ) : status === 'complete' ? (
               <>

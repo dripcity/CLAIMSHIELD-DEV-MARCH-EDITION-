@@ -7,12 +7,10 @@ export async function POST(req: NextRequest) {
     const user = await requireAuth();
     const { planType } = await req.json();
     
-    // Define prices
-    const prices = {
-      individual: process.env.STRIPE_INDIVIDUAL_PRICE_ID,
-      professional: process.env.STRIPE_PROFESSIONAL_PRICE_ID,
-      attorney: process.env.STRIPE_ATTORNEY_PRICE_ID,
-      body_shop: process.env.STRIPE_BODY_SHOP_PRICE_ID,
+    // Define prices using correct price IDs from .env
+    const prices: Record<string, string | undefined> = {
+      pro: process.env.STRIPE_PRICE_ID_PRO,
+      enterprise: process.env.STRIPE_PRICE_ID_ENTERPRISE,
     };
     
     const priceId = prices[planType as keyof typeof prices];

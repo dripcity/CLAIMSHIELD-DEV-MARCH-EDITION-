@@ -1,0 +1,893 @@
+{
+  "metadata": {
+    "generatedAt": "2026-03-04",
+    "project": "ClaimShield DV",
+    "roadmapVersion": "1.0",
+    "assumptions": [
+      "24/7 agent execution with parallel tracks",
+      "12-hour human oversight shifts",
+      "Spec sources are authoritative over current code"
+    ]
+  },
+  "phaseEstimates": {
+    "phase1CriticalFoundationAgentHours": 96,
+    "phase2CoreCompletionAgentHours": 212,
+    "phase3SecondaryFeaturesAgentHours": 148,
+    "phase4PolishOptimizationAgentHours": 104,
+    "totalAgentHours": 560
+  },
+  "parallelTracks": {
+    "track1FrontendComponents": ["CS-LR-015", "CS-LR-016", "CS-LR-017", "CS-LR-025", "CS-LR-030", "CS-LR-031"],
+    "track2BackendAPI": ["CS-LR-003", "CS-LR-004", "CS-LR-005", "CS-LR-007", "CS-LR-010", "CS-LR-024", "CS-LR-027"],
+    "track3DatabaseDataLayer": ["CS-LR-011", "CS-LR-012", "CS-LR-020", "CS-LR-034"],
+    "track4IntegrationTesting": ["CS-LR-001", "CS-LR-002", "CS-LR-013", "CS-LR-032", "CS-LR-033"],
+    "track5DocumentationDevOps": ["CS-LR-006", "CS-LR-008", "CS-LR-009", "CS-LR-035", "CS-LR-036"]
+  },
+  "tasks": [
+    {
+      "taskId": "CS-LR-001",
+      "priority": "P0",
+      "category": "Architecture",
+      "phase": 1,
+      "estimatedAgentHours": 10,
+      "dependencies": [],
+      "assignableToAgentType": ["Code Generation", "Browser Testing"],
+      "description": "Resolve dependency/runtime incompatibilities causing Clerk and React startup failures.",
+      "acceptanceCriteria": [
+        "npm run dev starts without import/export compatibility errors",
+        "Root route renders without internal server error",
+        "React and react-dom versions are pinned and matched"
+      ],
+      "filesToModify": [
+        "package.json",
+        "package-lock.json"
+      ],
+      "technicalApproach": "Pin a known-good compatibility matrix for Next, Clerk, React, and related packages; reinstall and validate runtime.",
+      "validationMethod": "Run dev server smoke test and capture browser snapshot for /, /sign-in, and /dashboard redirect behavior.",
+      "risksBlockers": "May require controlled package downgrades and lockfile regeneration.",
+      "workstream": "track4IntegrationTesting"
+    },
+    {
+      "taskId": "CS-LR-002",
+      "priority": "P0",
+      "category": "Testing",
+      "phase": 1,
+      "estimatedAgentHours": 6,
+      "dependencies": ["CS-LR-001"],
+      "assignableToAgentType": ["Code Generation", "Documentation"],
+      "description": "Restore deterministic quality gates for lint/build/test with clear pass/fail outputs.",
+      "acceptanceCriteria": [
+        "npm run lint exits successfully",
+        "npm run build exits successfully",
+        "npm run test:run exits with deterministic result"
+      ],
+      "filesToModify": [
+        "package.json",
+        "vitest.config.ts",
+        ".eslintrc.json"
+      ],
+      "technicalApproach": "Fix toolchain invocation issues, remove hanging behavior, and normalize scripts for CI use.",
+      "validationMethod": "Run all scripts twice and compare output consistency.",
+      "risksBlockers": "Existing flaky tests may still fail after command stabilization.",
+      "workstream": "track4IntegrationTesting"
+    },
+    {
+      "taskId": "CS-LR-003",
+      "priority": "P0",
+      "category": "Security",
+      "phase": 1,
+      "estimatedAgentHours": 8,
+      "dependencies": ["CS-LR-001"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Enforce appraisal ownership checks on comparables CRUD/search routes.",
+      "acceptanceCriteria": [
+        "PATCH/DELETE comparables rejects non-owner access with 403",
+        "Comparable search insert validates appraisal ownership before insert",
+        "Authorization tests cover owner and non-owner paths"
+      ],
+      "filesToModify": [
+        "app/api/comparables/[id]/route.ts",
+        "app/api/comparables/search/route.ts",
+        "lib/utils/auth.ts"
+      ],
+      "technicalApproach": "Join comparables to appraisals by appraisalId and verify userId against authenticated principal before mutation.",
+      "validationMethod": "Unit/integration tests for authz matrix on comparables endpoints.",
+      "risksBlockers": "May require query refactors for efficient ownership checks.",
+      "workstream": "track2BackendAPI"
+    },
+    {
+      "taskId": "CS-LR-004",
+      "priority": "P0",
+      "category": "Security",
+      "phase": 1,
+      "estimatedAgentHours": 8,
+      "dependencies": ["CS-LR-001"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Enforce ownership and linkage checks for document upload/delete flows.",
+      "acceptanceCriteria": [
+        "Upload route validates appraisal ownership from authenticated user",
+        "Delete route validates document belongs to user appraisal before blob delete",
+        "Unauthorized requests are rejected with 403"
+      ],
+      "filesToModify": [
+        "app/api/documents/upload/route.ts",
+        "app/api/documents/[id]/route.ts",
+        "lib/storage/blob.ts"
+      ],
+      "technicalApproach": "Store document metadata with appraisal binding and verify binding for all destructive operations.",
+      "validationMethod": "Integration tests with owner and cross-tenant scenarios.",
+      "risksBlockers": "Requires introducing persistent document metadata if absent.",
+      "workstream": "track2BackendAPI"
+    },
+    {
+      "taskId": "CS-LR-005",
+      "priority": "P0",
+      "category": "Security",
+      "phase": 1,
+      "estimatedAgentHours": 10,
+      "dependencies": ["CS-LR-001"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Remove mass-assignment risk from appraisal update and autosave APIs.",
+      "acceptanceCriteria": [
+        "Only allowlisted fields can be persisted",
+        "Unknown fields are rejected with 400",
+        "Schema validation errors return structured details"
+      ],
+      "filesToModify": [
+        "app/api/appraisals/[id]/route.ts",
+        "app/api/appraisals/[id]/auto-save/route.ts",
+        "lib/validation/schemas.ts"
+      ],
+      "technicalApproach": "Define strict Zod DTOs for patch payloads and map to DB columns explicitly.",
+      "validationMethod": "API tests for valid patch, invalid key, and nested payload edge cases.",
+      "risksBlockers": "Frontend may rely on permissive payload behavior and require updates.",
+      "workstream": "track2BackendAPI"
+    },
+    {
+      "taskId": "CS-LR-006",
+      "priority": "P0",
+      "category": "Security",
+      "phase": 1,
+      "estimatedAgentHours": 10,
+      "dependencies": ["CS-LR-004"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Implement private blob storage and signed URL issuance for documents/reports.",
+      "acceptanceCriteria": [
+        "Blob uploads are private by default",
+        "Signed URLs expire and are not reusable after expiry",
+        "Public URL access to private files is blocked"
+      ],
+      "filesToModify": [
+        "lib/storage/blob.ts",
+        "app/api/appraisals/[id]/generate-pdf/route.ts",
+        "app/api/documents/upload/route.ts"
+      ],
+      "technicalApproach": "Use provider private access mode and create server-only signed URL endpoints with expiry claims.",
+      "validationMethod": "Security tests for expired token access and unauthorized direct URL access.",
+      "risksBlockers": "Storage provider signed URL API differences across environments.",
+      "workstream": "track5DocumentationDevOps"
+    },
+    {
+      "taskId": "CS-LR-007",
+      "priority": "P0",
+      "category": "Security",
+      "phase": 1,
+      "estimatedAgentHours": 6,
+      "dependencies": ["CS-LR-005"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Replace base64 share token with cryptographically signed share links and verification endpoint.",
+      "acceptanceCriteria": [
+        "Share token includes signature and expiry",
+        "Tampered tokens are rejected",
+        "Expired links return 410 or equivalent"
+      ],
+      "filesToModify": [
+        "app/api/appraisals/[id]/share/route.ts",
+        "app/(dashboard)/appraisals/[id]/preview/page.tsx",
+        "lib/utils/security.ts"
+      ],
+      "technicalApproach": "Use HMAC/JWT with server secret and explicit claims for appraisalId and expiry.",
+      "validationMethod": "Unit tests for token generation/verification and tamper detection.",
+      "risksBlockers": "Needs clear revocation policy for already-issued links.",
+      "workstream": "track2BackendAPI"
+    },
+    {
+      "taskId": "CS-LR-008",
+      "priority": "P0",
+      "category": "Feature",
+      "phase": 1,
+      "estimatedAgentHours": 5,
+      "dependencies": ["CS-LR-001"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Align individual report checkout price to required $129.",
+      "acceptanceCriteria": [
+        "Checkout line item amount equals 12900 cents",
+        "UI labels show $129 consistently",
+        "Payment tests validate expected amount"
+      ],
+      "filesToModify": [
+        "app/api/checkout/appraisal/route.ts",
+        "app/(dashboard)/appraisals/[id]/AppraisalPageClient.tsx"
+      ],
+      "technicalApproach": "Centralize price constants and consume from both API and UI.",
+      "validationMethod": "Checkout session creation test asserts unit amount.",
+      "risksBlockers": "Requires Stripe product/price sync in dashboard.",
+      "workstream": "track5DocumentationDevOps"
+    },
+    {
+      "taskId": "CS-LR-009",
+      "priority": "P0",
+      "category": "Feature",
+      "phase": 1,
+      "estimatedAgentHours": 8,
+      "dependencies": ["CS-LR-001"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Align subscription checkout plans to individual/professional/attorney/body_shop model.",
+      "acceptanceCriteria": [
+        "Checkout API accepts spec-defined plan identifiers",
+        "Price IDs map to all four required plans",
+        "Entitlements and metadata reflect selected role plan"
+      ],
+      "filesToModify": [
+        "app/api/checkout/route.ts",
+        "lib/payments/stripe.ts",
+        ".env.local.example"
+      ],
+      "technicalApproach": "Define canonical plan enum and enforce usage across API, payment service, and env names.",
+      "validationMethod": "Automated API tests for each plan type and invalid plan rejection.",
+      "risksBlockers": "Potential migration required for existing subscription metadata.",
+      "workstream": "track5DocumentationDevOps"
+    },
+    {
+      "taskId": "CS-LR-010",
+      "priority": "P0",
+      "category": "Bug Fix",
+      "phase": 1,
+      "estimatedAgentHours": 12,
+      "dependencies": ["CS-LR-008", "CS-LR-009"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Implement Stripe webhook fulfillment, idempotency, and post-payment triggers.",
+      "acceptanceCriteria": [
+        "Webhook events are idempotent",
+        "Completed appraisal payment triggers report generation workflow",
+        "Failure events produce retry-safe status transitions and notifications"
+      ],
+      "filesToModify": [
+        "app/api/webhooks/stripe/route.ts",
+        "app/api/appraisals/[id]/generate-pdf/route.ts",
+        "app/api/email/send/route.ts"
+      ],
+      "technicalApproach": "Store processed event ids, gate side effects, and separate event handler functions by type.",
+      "validationMethod": "Webhook replay tests and sandbox Stripe event simulation.",
+      "risksBlockers": "Needs durable idempotency storage.",
+      "workstream": "track2BackendAPI"
+    },
+    {
+      "taskId": "CS-LR-011",
+      "priority": "P0",
+      "category": "Architecture",
+      "phase": 1,
+      "estimatedAgentHours": 12,
+      "dependencies": ["CS-LR-001"],
+      "assignableToAgentType": ["Database"],
+      "description": "Add missing indexes and generate checked-in migrations for schema parity.",
+      "acceptanceCriteria": [
+        "Indexes exist for appraisals.user_id, appraisals.status, comparable_vehicles.appraisal_id",
+        "drizzle migration files are generated and committed",
+        "Schema can be reproduced from clean database"
+      ],
+      "filesToModify": [
+        "lib/db/schema.ts",
+        "drizzle.config.ts",
+        "drizzle/migrations/*"
+      ],
+      "technicalApproach": "Declare indexes in schema, generate migration SQL, verify execution in Neon test database.",
+      "validationMethod": "Run migration on empty DB and inspect query plans.",
+      "risksBlockers": "May require downtime plan if schema changes are non-trivial.",
+      "workstream": "track3DatabaseDataLayer"
+    },
+    {
+      "taskId": "CS-LR-012",
+      "priority": "P1",
+      "category": "Architecture",
+      "phase": 1,
+      "estimatedAgentHours": 6,
+      "dependencies": ["CS-LR-011"],
+      "assignableToAgentType": ["Database"],
+      "description": "Create deterministic seed scripts for local/test environments.",
+      "acceptanceCriteria": [
+        "Seed command populates representative users, appraisals, and comparables",
+        "Seed is idempotent or has reset mode",
+        "Tests can run against seeded fixture data"
+      ],
+      "filesToModify": [
+        "scripts/seed.ts",
+        "package.json"
+      ],
+      "technicalApproach": "Implement scripted inserts with stable IDs and role distributions.",
+      "validationMethod": "Run seed twice and verify expected counts.",
+      "risksBlockers": "Requires agreement on canonical fixture set.",
+      "workstream": "track3DatabaseDataLayer"
+    },
+    {
+      "taskId": "CS-LR-013",
+      "priority": "P0",
+      "category": "Testing",
+      "phase": 1,
+      "estimatedAgentHours": 7,
+      "dependencies": ["CS-LR-002"],
+      "assignableToAgentType": ["Code Generation", "Documentation"],
+      "description": "Create CI gate pipeline for lint/build/test/authz smoke before merge.",
+      "acceptanceCriteria": [
+        "CI runs lint, typecheck/build, and tests on PR",
+        "Pipeline blocks merge on failures",
+        "Security smoke checks include authz regression tests"
+      ],
+      "filesToModify": [
+        ".github/workflows/ci.yml",
+        "package.json"
+      ],
+      "technicalApproach": "Use staged jobs and cache dependencies; include minimal service setup for tests.",
+      "validationMethod": "Open sample PR and verify status checks trigger and enforce policy.",
+      "risksBlockers": "Repo may not yet have stable test runtime for all suites.",
+      "workstream": "track4IntegrationTesting"
+    },
+    {
+      "taskId": "CS-LR-014",
+      "priority": "P1",
+      "category": "Bug Fix",
+      "phase": 1,
+      "estimatedAgentHours": 5,
+      "dependencies": ["CS-LR-001"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Fix onboarding role update flow to use authenticated application API, not webhook endpoint.",
+      "acceptanceCriteria": [
+        "Onboarding submits to a dedicated authenticated role-update route",
+        "Webhook route remains external provider-only",
+        "Role selection persists and redirects correctly"
+      ],
+      "filesToModify": [
+        "app/(auth)/onboarding/page.tsx",
+        "app/api/users/role/route.ts",
+        "app/api/webhooks/clerk/route.ts"
+      ],
+      "technicalApproach": "Add secure role update API using authenticated user identity and allowlisted role set.",
+      "validationMethod": "Manual onboarding flow + API integration tests.",
+      "risksBlockers": "Needs role update policy decision for existing users.",
+      "workstream": "track2BackendAPI"
+    },
+    {
+      "taskId": "CS-LR-015",
+      "priority": "P1",
+      "category": "Feature",
+      "phase": 2,
+      "estimatedAgentHours": 6,
+      "dependencies": ["CS-LR-001"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Normalize wizard routing paths to dashboard namespace and remove broken VIN-based edit links.",
+      "acceptanceCriteria": [
+        "All wizard next/back/edit routes resolve under /dashboard/appraisals/:id",
+        "No route navigation uses VIN as appraisal identifier",
+        "Step transitions are stable for steps 1-8"
+      ],
+      "filesToModify": [
+        "app/_components/wizard/WizardLayout.tsx",
+        "app/_components/wizard/Step7Review.tsx",
+        "app/_components/wizard/Step8Generate.tsx"
+      ],
+      "technicalApproach": "Introduce route helper util and consume it in all wizard components.",
+      "validationMethod": "Browser automation through full step navigation path.",
+      "risksBlockers": "Deep-linking bookmarks may require redirect compatibility.",
+      "workstream": "track1FrontendComponents"
+    },
+    {
+      "taskId": "CS-LR-016",
+      "priority": "P1",
+      "category": "Feature",
+      "phase": 2,
+      "estimatedAgentHours": 18,
+      "dependencies": ["CS-LR-015"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Wire wizard step inputs to centralized state and autosave contract.",
+      "acceptanceCriteria": [
+        "Steps 1-3 form inputs are controlled and persist values",
+        "Autosave sends synchronized payload matching API schema",
+        "Draft resume restores all previously entered data"
+      ],
+      "filesToModify": [
+        "app/(dashboard)/appraisals/[id]/wizard/page.tsx",
+        "app/_components/wizard/Step1VehicleInfo.tsx",
+        "app/_components/wizard/Step2OwnerInfo.tsx",
+        "app/_components/wizard/Step3AccidentDetails.tsx",
+        "app/_components/wizard/WizardLayout.tsx"
+      ],
+      "technicalApproach": "Implement typed wizard store with explicit field update handlers and debounced autosave.",
+      "validationMethod": "Component tests + browser flow with refresh mid-wizard.",
+      "risksBlockers": "Requires coordinated payload schema with backend.",
+      "workstream": "track1FrontendComponents"
+    },
+    {
+      "taskId": "CS-LR-017",
+      "priority": "P1",
+      "category": "Bug Fix",
+      "phase": 2,
+      "estimatedAgentHours": 8,
+      "dependencies": ["CS-LR-016"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Fix Step 4 document extraction request contract and merge behavior.",
+      "acceptanceCriteria": [
+        "Frontend sends documentUrl and documentType expected by extraction API",
+        "Extracted fields map correctly into wizard data model",
+        "Extraction errors render user-visible non-blocking feedback"
+      ],
+      "filesToModify": [
+        "app/_components/wizard/Step4DocumentUpload.tsx",
+        "app/_components/DocumentPreview.tsx",
+        "app/api/documents/extract/route.ts"
+      ],
+      "technicalApproach": "Introduce typed extraction payload/result interfaces and mapping adapters.",
+      "validationMethod": "Integration test with mocked extraction responses and manual UI verification.",
+      "risksBlockers": "Dependent on final extraction schema decisions.",
+      "workstream": "track1FrontendComponents"
+    },
+    {
+      "taskId": "CS-LR-018",
+      "priority": "P1",
+      "category": "Feature",
+      "phase": 2,
+      "estimatedAgentHours": 4,
+      "dependencies": ["CS-LR-001"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Upgrade AI client to required Gemini 3.1 Pro model and align prompt contracts.",
+      "acceptanceCriteria": [
+        "Model identifier matches spec requirement",
+        "Extraction routes use updated client",
+        "Regression tests pass on representative sample payloads"
+      ],
+      "filesToModify": [
+        "lib/ai/gemini.ts",
+        "lib/ai/extract-repair-estimate.ts",
+        "lib/ai/extract-insurance-docs.ts",
+        "lib/ai/analyze-images.ts"
+      ],
+      "technicalApproach": "Centralize model constant and route all AI extraction calls through shared wrapper.",
+      "validationMethod": "Mocked and live smoke calls with schema parsing checks.",
+      "risksBlockers": "Model availability/quotas may vary per environment.",
+      "workstream": "track2BackendAPI"
+    },
+    {
+      "taskId": "CS-LR-019",
+      "priority": "P1",
+      "category": "Feature",
+      "phase": 2,
+      "estimatedAgentHours": 8,
+      "dependencies": ["CS-LR-003"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Replace placeholder Apify actor and implement resilient comparable search mapping.",
+      "acceptanceCriteria": [
+        "Apify actor id is configurable and documented",
+        "Search returns normalized comparable objects for both comp types",
+        "Failures trigger retry/backoff and meaningful API errors"
+      ],
+      "filesToModify": [
+        "lib/scraping/apify-search.ts",
+        "app/api/comparables/search/route.ts",
+        ".env.local.example"
+      ],
+      "technicalApproach": "Implement provider adapter with input/output validation and fallback behavior.",
+      "validationMethod": "API integration tests with mocked Apify and one live sandbox run.",
+      "risksBlockers": "External provider rate limits and schema drift.",
+      "workstream": "track2BackendAPI"
+    },
+    {
+      "taskId": "CS-LR-020",
+      "priority": "P1",
+      "category": "Feature",
+      "phase": 2,
+      "estimatedAgentHours": 10,
+      "dependencies": ["CS-LR-016"],
+      "assignableToAgentType": ["Code Generation", "Database"],
+      "description": "Complete valuation logic for pre-accident grade handling and dvPercentOfRepair computation.",
+      "acceptanceCriteria": [
+        "Pre-accident condition uses actual subject data",
+        "dvPercentOfRepair is computed from repair totals",
+        "Calculation tests cover edge cases and expected formulas"
+      ],
+      "filesToModify": [
+        "lib/calculations/valuation.ts",
+        "app/api/calculations/route.ts",
+        "tests/calculations/valuation.test.ts"
+      ],
+      "technicalApproach": "Pass full input model into valuation function and compute all returned metrics deterministically.",
+      "validationMethod": "Unit tests and API response schema validation.",
+      "risksBlockers": "Need agreement on formula behavior when repair cost is zero.",
+      "workstream": "track3DatabaseDataLayer"
+    },
+    {
+      "taskId": "CS-LR-021",
+      "priority": "P0",
+      "category": "Feature",
+      "phase": 2,
+      "estimatedAgentHours": 42,
+      "dependencies": ["CS-LR-016", "CS-LR-020"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Implement full 15-25 page appraisal report generation with required section structure.",
+      "acceptanceCriteria": [
+        "Report includes all required sections from master schema",
+        "Generated PDF is multi-page with professional formatting and pagination",
+        "Role-specific USPAP sections render only when applicable"
+      ],
+      "filesToModify": [
+        "lib/pdf/generator.tsx",
+        "app/api/appraisals/[id]/generate-pdf/route.ts",
+        "app/(dashboard)/appraisals/[id]/preview/page.tsx"
+      ],
+      "technicalApproach": "Build report assembler model then render section components in deterministic order with page breaks.",
+      "validationMethod": "PDF structure test (page count, section markers) and visual review snapshots.",
+      "risksBlockers": "Large rendering payloads may require performance tuning.",
+      "workstream": "track1FrontendComponents"
+    },
+    {
+      "taskId": "CS-LR-022",
+      "priority": "P1",
+      "category": "Feature",
+      "phase": 2,
+      "estimatedAgentHours": 9,
+      "dependencies": ["CS-LR-006", "CS-LR-021"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Harden report preview/download/share flows on private storage model.",
+      "acceptanceCriteria": [
+        "Preview uses signed URL retrieval endpoint",
+        "Download works for entitled user only",
+        "Share links are secure and expire correctly"
+      ],
+      "filesToModify": [
+        "app/(dashboard)/appraisals/[id]/preview/page.tsx",
+        "app/api/appraisals/[id]/share/route.ts",
+        "app/api/appraisals/[id]/route.ts"
+      ],
+      "technicalApproach": "Expose explicit report access API with authz + expiry semantics.",
+      "validationMethod": "Browser tests for owner/non-owner and expired-link scenarios.",
+      "risksBlockers": "Signed URL generation cost or latency.",
+      "workstream": "track1FrontendComponents"
+    },
+    {
+      "taskId": "CS-LR-023",
+      "priority": "P1",
+      "category": "Feature",
+      "phase": 2,
+      "estimatedAgentHours": 22,
+      "dependencies": ["CS-LR-016"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Implement full document template engine and all 7 required templates.",
+      "acceptanceCriteria": [
+        "All required templates are generated with variable substitution",
+        "No unresolved {{variable}} placeholders remain in output",
+        "Template generation APIs return expected content and metadata"
+      ],
+      "filesToModify": [
+        "lib/templates/template-engine.ts",
+        "lib/templates/*.ts",
+        "app/api/templates/[type]/route.ts"
+      ],
+      "technicalApproach": "Create central renderer and typed template data contracts reused by all template modules.",
+      "validationMethod": "Template snapshot tests and placeholder-completion assertions.",
+      "risksBlockers": "Legal copy approval required for some templates.",
+      "workstream": "track2BackendAPI"
+    },
+    {
+      "taskId": "CS-LR-024",
+      "priority": "P1",
+      "category": "Feature",
+      "phase": 2,
+      "estimatedAgentHours": 16,
+      "dependencies": ["CS-LR-023"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Implement expert witness affidavit generation endpoint with appraiser gating.",
+      "acceptanceCriteria": [
+        "Endpoint only available to professional appraiser role",
+        "Affidavit includes USPAP statements and appraiser credentials",
+        "Output format supports PDF or DOCX as required"
+      ],
+      "filesToModify": [
+        "app/api/templates/expert-affidavit/route.ts",
+        "lib/templates/expert-affidavit.ts",
+        "lib/legal/uspap-compliance.ts"
+      ],
+      "technicalApproach": "Use shared template engine with role guard and validation of appraiser credentials.",
+      "validationMethod": "Role-based API tests and generated-document snapshot validation.",
+      "risksBlockers": "Credential completeness rules may require product decision.",
+      "workstream": "track2BackendAPI"
+    },
+    {
+      "taskId": "CS-LR-025",
+      "priority": "P1",
+      "category": "Feature",
+      "phase": 2,
+      "estimatedAgentHours": 12,
+      "dependencies": ["CS-LR-016"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Complete document library and template pages currently marked as coming soon.",
+      "acceptanceCriteria": [
+        "Documents page lists uploaded files with actions",
+        "Templates page lists available template types and generation actions",
+        "Navigation from appraisal details works end-to-end"
+      ],
+      "filesToModify": [
+        "app/(dashboard)/appraisals/[id]/documents/page.tsx",
+        "app/(dashboard)/appraisals/[id]/templates/page.tsx",
+        "app/(dashboard)/appraisals/[id]/AppraisalPageClient.tsx"
+      ],
+      "technicalApproach": "Connect existing APIs and render grouped content with empty/error states.",
+      "validationMethod": "Browser automation of document/template workflow.",
+      "risksBlockers": "Depends on completed backend template endpoints.",
+      "workstream": "track1FrontendComponents"
+    },
+    {
+      "taskId": "CS-LR-026",
+      "priority": "P1",
+      "category": "Feature",
+      "phase": 2,
+      "estimatedAgentHours": 8,
+      "dependencies": ["CS-LR-010", "CS-LR-021"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Wire email delivery trigger points for purchase completion and report generation.",
+      "acceptanceCriteria": [
+        "Payment success triggers report-ready email when report available",
+        "Manual email send route validates recipient and report ownership",
+        "Send failure is retriable and logged"
+      ],
+      "filesToModify": [
+        "app/api/webhooks/stripe/route.ts",
+        "app/api/email/send/route.ts",
+        "lib/email/sendgrid.ts"
+      ],
+      "technicalApproach": "Implement asynchronous email job trigger with idempotency key.",
+      "validationMethod": "Integration test with mocked SendGrid transport.",
+      "risksBlockers": "Email domain verification and provider quotas.",
+      "workstream": "track2BackendAPI"
+    },
+    {
+      "taskId": "CS-LR-027",
+      "priority": "P1",
+      "category": "Feature",
+      "phase": 3,
+      "estimatedAgentHours": 24,
+      "dependencies": ["CS-LR-014", "CS-LR-011"],
+      "assignableToAgentType": ["Code Generation", "Database"],
+      "description": "Implement attorney team management backend and functional dashboard UI.",
+      "acceptanceCriteria": [
+        "Attorneys can invite/list/remove team members",
+        "Paralegal permissions are role-scoped",
+        "Team actions are audited"
+      ],
+      "filesToModify": [
+        "app/api/team/route.ts",
+        "app/(dashboard)/team/page.tsx",
+        "lib/db/schema.ts"
+      ],
+      "technicalApproach": "Add team membership tables and permission middleware integration.",
+      "validationMethod": "Role-based integration tests and browser invitation flow.",
+      "risksBlockers": "Requires invite email flow and acceptance UX.",
+      "workstream": "track2BackendAPI"
+    },
+    {
+      "taskId": "CS-LR-028",
+      "priority": "P2",
+      "category": "Feature",
+      "phase": 3,
+      "estimatedAgentHours": 18,
+      "dependencies": ["CS-LR-025"],
+      "assignableToAgentType": ["Code Generation", "Documentation"],
+      "description": "Build educational resources and negotiation guidance module per requirements.",
+      "acceptanceCriteria": [
+        "Topic-organized educational library is accessible from dashboard/resources",
+        "Includes 17c explanation, NAAA guidance, negotiation scripts",
+        "State-specific guidance blocks are rendered"
+      ],
+      "filesToModify": [
+        "app/(dashboard)/resources/page.tsx",
+        "lib/legal/state-citations.ts",
+        "app/(dashboard)/dashboard/page.tsx"
+      ],
+      "technicalApproach": "Add content model and role-targeted presentation components.",
+      "validationMethod": "Content completeness checklist + UI smoke tests.",
+      "risksBlockers": "Content/legal review lead time.",
+      "workstream": "track1FrontendComponents"
+    },
+    {
+      "taskId": "CS-LR-029",
+      "priority": "P2",
+      "category": "Feature",
+      "phase": 3,
+      "estimatedAgentHours": 14,
+      "dependencies": ["CS-LR-014", "CS-LR-027"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Complete role-gated UI/feature exposure including body shop white-label options.",
+      "acceptanceCriteria": [
+        "Role-specific controls are hidden or shown correctly",
+        "Body shop white-label configuration panel is functional",
+        "Unauthorized feature access attempts are blocked server-side"
+      ],
+      "filesToModify": [
+        "lib/utils/rbac.ts",
+        "app/(dashboard)/settings/page.tsx",
+        "app/(dashboard)/dashboard/layout.tsx"
+      ],
+      "technicalApproach": "Use shared permission helper for both server and client guard conditions.",
+      "validationMethod": "Role matrix tests and browser role-switch smoke flows.",
+      "risksBlockers": "Feature flag strategy may be needed.",
+      "workstream": "track1FrontendComponents"
+    },
+    {
+      "taskId": "CS-LR-030",
+      "priority": "P1",
+      "category": "Testing",
+      "phase": 3,
+      "estimatedAgentHours": 12,
+      "dependencies": ["CS-LR-016", "CS-LR-025"],
+      "assignableToAgentType": ["Browser Testing"],
+      "description": "Execute responsive design hardening for 320px-2560px across critical pages.",
+      "acceptanceCriteria": [
+        "Wizard is usable at 320px viewport",
+        "Dashboard tables/actions are mobile-usable",
+        "Preview and template pages render without overlap/truncation"
+      ],
+      "filesToModify": [
+        "app/(dashboard)/dashboard/page.tsx",
+        "app/(dashboard)/appraisals/[id]/wizard/page.tsx",
+        "app/(dashboard)/appraisals/[id]/preview/page.tsx"
+      ],
+      "technicalApproach": "Add responsive breakpoints and mobile-first layout adjustments.",
+      "validationMethod": "Playwright viewport matrix snapshots.",
+      "risksBlockers": "Complex table interaction patterns on mobile.",
+      "workstream": "track1FrontendComponents"
+    },
+    {
+      "taskId": "CS-LR-031",
+      "priority": "P1",
+      "category": "Security",
+      "phase": 3,
+      "estimatedAgentHours": 14,
+      "dependencies": ["CS-LR-016", "CS-LR-025"],
+      "assignableToAgentType": ["Code Generation", "Browser Testing"],
+      "description": "Deliver accessibility compliance baseline (semantic structure, labels, keyboard, ARIA).",
+      "acceptanceCriteria": [
+        "All form inputs have associated labels",
+        "Keyboard navigation works for all interactive controls",
+        "Automated accessibility scan reports no critical violations"
+      ],
+      "filesToModify": [
+        "app/layout.tsx",
+        "app/_components/**/*.tsx",
+        "components/ui/**/*.tsx"
+      ],
+      "technicalApproach": "Apply semantic HTML fixes, replace alert dialogs, and add ARIA for complex widgets.",
+      "validationMethod": "axe-core scan and manual keyboard traversal checklist.",
+      "risksBlockers": "Legacy component patterns may need refactors.",
+      "workstream": "track1FrontendComponents"
+    },
+    {
+      "taskId": "CS-LR-032",
+      "priority": "P1",
+      "category": "Testing",
+      "phase": 4,
+      "estimatedAgentHours": 24,
+      "dependencies": ["CS-LR-002", "CS-LR-011", "CS-LR-016"],
+      "assignableToAgentType": ["Code Generation"],
+      "description": "Refactor test suite to align with production contracts and stable fixtures.",
+      "acceptanceCriteria": [
+        "Auth tests reflect actual requireAuth API",
+        "Template tests exercise production template engine",
+        "Database tests use deterministic fixture lifecycle"
+      ],
+      "filesToModify": [
+        "tests/authentication/*.test.ts",
+        "tests/templates/*.test.ts",
+        "tests/database/*.test.ts",
+        "vitest.config.ts"
+      ],
+      "technicalApproach": "Remove mock-only contract drift and create dedicated test helpers for auth/database setup.",
+      "validationMethod": "Run full test suite and ensure repeatability over multiple runs.",
+      "risksBlockers": "Potentially significant rewrite scope.",
+      "workstream": "track4IntegrationTesting"
+    },
+    {
+      "taskId": "CS-LR-033",
+      "priority": "P1",
+      "category": "Testing",
+      "phase": 4,
+      "estimatedAgentHours": 20,
+      "dependencies": ["CS-LR-016", "CS-LR-021", "CS-LR-022", "CS-LR-026"],
+      "assignableToAgentType": ["Browser Testing"],
+      "description": "Implement Playwright E2E suite for critical user journeys and payment/report flows.",
+      "acceptanceCriteria": [
+        "E2E covers onboarding, wizard, calculation, payment, report access",
+        "Tests run headless in CI",
+        "Artifacts include screenshots/video for failed steps"
+      ],
+      "filesToModify": [
+        "tests/e2e/*.spec.ts",
+        "playwright.config.ts",
+        ".github/workflows/ci.yml"
+      ],
+      "technicalApproach": "Use seeded test accounts and deterministic fixtures; mock external providers where needed.",
+      "validationMethod": "CI execution with reproducible pass baseline.",
+      "risksBlockers": "External payment/auth providers may require sandbox orchestration.",
+      "workstream": "track4IntegrationTesting"
+    },
+    {
+      "taskId": "CS-LR-034",
+      "priority": "P2",
+      "category": "Performance",
+      "phase": 4,
+      "estimatedAgentHours": 16,
+      "dependencies": ["CS-LR-011", "CS-LR-021", "CS-LR-033"],
+      "assignableToAgentType": ["Code Generation", "Database"],
+      "description": "Optimize query paths, bulk operations, and report generation latency.",
+      "acceptanceCriteria": [
+        "Dashboard and wizard APIs meet response-time targets",
+        "Comparable search and report generation respect SLA thresholds",
+        "Bulk download pipeline supports concurrent fetch strategy"
+      ],
+      "filesToModify": [
+        "app/api/appraisals/route.ts",
+        "app/api/appraisals/bulk-download/route.ts",
+        "lib/calculations/*.ts",
+        "lib/pdf/generator.tsx"
+      ],
+      "technicalApproach": "Profile hotspots, add batching/concurrency controls, and exploit DB indexes.",
+      "validationMethod": "Load-test scripts and endpoint latency benchmarks.",
+      "risksBlockers": "PDF generation complexity may require asynchronous job queue.",
+      "workstream": "track3DatabaseDataLayer"
+    },
+    {
+      "taskId": "CS-LR-035",
+      "priority": "P1",
+      "category": "Security",
+      "phase": 4,
+      "estimatedAgentHours": 12,
+      "dependencies": ["CS-LR-003", "CS-LR-004", "CS-LR-005", "CS-LR-006"],
+      "assignableToAgentType": ["Code Generation", "Documentation"],
+      "description": "Implement security audit logging and server-side rate limiting for API routes.",
+      "acceptanceCriteria": [
+        "Sensitive actions are logged with user and resource ids",
+        "Rate limiting is enforced on write-heavy endpoints",
+        "Security events are queryable for incident response"
+      ],
+      "filesToModify": [
+        "lib/utils/security.ts",
+        "middleware.ts",
+        "app/api/**/route.ts"
+      ],
+      "technicalApproach": "Add middleware-level limiter and structured security log utility with redaction.",
+      "validationMethod": "Abuse-case tests for throttling and log verification.",
+      "risksBlockers": "Distributed rate limiting may need shared storage.",
+      "workstream": "track5DocumentationDevOps"
+    },
+    {
+      "taskId": "CS-LR-036",
+      "priority": "P1",
+      "category": "Architecture",
+      "phase": 4,
+      "estimatedAgentHours": 8,
+      "dependencies": ["CS-LR-013", "CS-LR-033", "CS-LR-035"],
+      "assignableToAgentType": ["Documentation"],
+      "description": "Publish launch runbook, operational checklist, and rollback procedures.",
+      "acceptanceCriteria": [
+        "Pre-launch checklist includes security/performance/test gates",
+        "Rollback procedure is executable and tested",
+        "On-call and incident response contacts/escalation paths are documented"
+      ],
+      "filesToModify": [
+        "DEPLOYMENT.md",
+        "LAUNCH_READINESS_AUDIT.md",
+        "README.md"
+      ],
+      "technicalApproach": "Document concrete command sequences, decision gates, and ownership responsibilities.",
+      "validationMethod": "Tabletop dry run with handoff validation.",
+      "risksBlockers": "Requires final infra/service ownership decisions.",
+      "workstream": "track5DocumentationDevOps"
+    }
+  ]
+}
