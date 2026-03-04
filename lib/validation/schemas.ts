@@ -42,3 +42,22 @@ export const accidentDetailsSchema = z.object({
   totalLaborHours: z.number().min(0, 'Labor hours must be positive'),
   frameLaborHours: z.number().min(0, 'Frame labor hours must be positive'),
 });
+
+export const valuationComparableSchema = z.object({
+  listingPrice: z.number().positive('Listing price must be greater than 0'),
+  mileage: z.number().int().min(0, 'Mileage must be non-negative'),
+  year: z.number().int().min(1900).max(new Date().getFullYear() + 1),
+  accidentHistory: z.boolean(),
+});
+
+export const valuationInputSchema = z.object({
+  comparables: z.array(valuationComparableSchema)
+    .min(2, 'At least 2 comparables are required')
+    .refine((comps) => comps.some((c) => !c.accidentHistory), {
+      message: 'At least one pre-accident comparable is required',
+    })
+    .refine((comps) => comps.some((c) => c.accidentHistory), {
+      message: 'At least one post-accident comparable is required',
+    }),
+  repairCost: z.number().min(0, 'Repair cost must be non-negative').optional(),
+});

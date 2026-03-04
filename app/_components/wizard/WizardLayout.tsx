@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { WizardProgress } from './WizardProgress';
+import { getDashboardWizardRoute } from '@/lib/utils/routes';
 
 interface WizardLayoutProps {
   appraisalId: string;
@@ -42,11 +43,11 @@ export function WizardLayout({ appraisalId, currentStep, children }: WizardLayou
     // Validate current step
     // Save data
     // Navigate to next step
-    router.push(`/appraisals/${appraisalId}/wizard?step=${currentStep + 1}`);
+    router.push(getDashboardWizardRoute(appraisalId, currentStep + 1));
   };
   
   const handleBack = () => {
-    router.push(`/appraisals/${appraisalId}/wizard?step=${currentStep - 1}`);
+    router.push(getDashboardWizardRoute(appraisalId, currentStep - 1));
   };
   
   return (

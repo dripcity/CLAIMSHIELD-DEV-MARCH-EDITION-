@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@clerk/nextjs';
 import { Card } from '@/components/ui/card';
 
 type UserRole = 'individual' | 'appraiser' | 'attorney' | 'body_shop';
@@ -35,7 +34,6 @@ const roleOptions = [
 ];
 
 export default function OnboardingPage() {
-  const { user } = useUser();
   const router = useRouter();
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [saving, setSaving] = useState(false);
@@ -45,13 +43,10 @@ export default function OnboardingPage() {
     setSaving(true);
 
     try {
-      await fetch('/api/webhooks/clerk', {
+      await fetch('/api/users/role', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user?.id,
-          role,
-        }),
+        body: JSON.stringify({ role }),
       });
 
       router.push('/dashboard');

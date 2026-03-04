@@ -7,6 +7,7 @@ const envSchema = z.object({
   // Clerk Authentication
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1, 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is required'),
   CLERK_SECRET_KEY: z.string().min(1, 'CLERK_SECRET_KEY is required'),
+  CLERK_WEBHOOK_SIGNING_SECRET: z.string().min(1, 'CLERK_WEBHOOK_SIGNING_SECRET is required'),
   
   // Google Gemini AI
   GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY is required'),
@@ -37,6 +38,7 @@ function validateEnv(): Env {
       DATABASE_URL: process.env.DATABASE_URL,
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
       CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
+      CLERK_WEBHOOK_SIGNING_SECRET: process.env.CLERK_WEBHOOK_SIGNING_SECRET,
       GEMINI_API_KEY: process.env.GEMINI_API_KEY,
       BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN,
       APIFY_API_TOKEN: process.env.APIFY_API_TOKEN,
