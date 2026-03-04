@@ -206,7 +206,7 @@ export default function AppraisalWizardPage({ params }: { params: Promise<{ id: 
           />
         );
       case 7:
-        return <Step7Review data={formData} />;
+        return <Step7Review appraisalId={id} data={formData} />;
       case 8:
         return <Step8Generate appraisalId={id} data={formData} />;
       default:

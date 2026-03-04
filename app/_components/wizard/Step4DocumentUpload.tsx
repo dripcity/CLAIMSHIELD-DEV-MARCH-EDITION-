@@ -110,16 +110,24 @@ export function Step4DocumentUpload({ appraisalId, formData, setFormData, onNext
     }
   };
 
-  const handleExtractData = async (documentId: string) => {
-    setExtracting(documentId);
-    
+  const getDocumentType = (doc: Document): 'repair_estimate' | 'insurance_docs' | 'damage_photos' | 'repair_photos' => {
+    if (repairEstimates.some((estimate) => estimate.id === doc.id)) return 'repair_estimate';
+    if (insuranceDocs.some((insuranceDoc) => insuranceDoc.id === doc.id)) return 'insurance_docs';
+    if (repairPhotos.some((photo) => photo.id === doc.id)) return 'repair_photos';
+    return 'damage_photos';
+  };
+
+  const handleExtractData = async (document: Document) => {
+    setExtracting(document.id);
+
     try {
       const response = await fetch('/api/documents/extract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           appraisalId,
-          documentId,
+          documentUrl: document.url,
+          documentType: getDocumentType(document),
         }),
       });
 
@@ -127,7 +135,7 @@ export function Step4DocumentUpload({ appraisalId, formData, setFormData, onNext
         const result = await response.json();
         setExtractionResults((prev) => ({
           ...prev,
-          [documentId]: result,
+          [document.id]: result,
         }));
         setShowExtractedData(true);
       } else {

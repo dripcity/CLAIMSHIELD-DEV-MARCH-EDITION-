@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { getDashboardWizardRoute } from '@/lib/utils/routes';
 
 interface Step7ReviewProps {
+  appraisalId: string;
   data: {
     subjectVehicle: {
       vin: string;
@@ -59,13 +61,13 @@ interface Step7ReviewProps {
   };
 }
 
-export function Step7Review({ data }: Step7ReviewProps) {
+export function Step7Review({ appraisalId, data }: Step7ReviewProps) {
   const router = useRouter();
   const [editingStep, setEditingStep] = useState<number | null>(null);
 
   const handleEdit = (step: number) => {
     setEditingStep(step);
-    router.push(`/appraisals/${data.subjectVehicle.vin}/wizard?step=${step}`);
+    router.push(getDashboardWizardRoute(appraisalId, step));
   };
 
   return (

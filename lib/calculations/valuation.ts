@@ -90,7 +90,8 @@ export function calculatePercentile(values: number[], percentile: number): numbe
 export function calculateValuation(
   subjectVehicle: SubjectVehicle,
   comparables: ComparableVehicle[],
-  severityAnalysis: { postRepairNaaaGrade: string }
+  severityAnalysis: { postRepairNaaaGrade: string },
+  repairCost: number = 0
 ) {
   // Separate pre-accident and post-accident comparables
   const preAccidentComps = comparables.filter(c => !c.accidentHistory);
@@ -121,7 +122,7 @@ export function calculateValuation(
   const postRepairAcv = calculateMedian(postAccidentValues);
   
   // Calculate diminished value
-  const diminishedValue = preAccidentFmv - postRepairAcv;
+  const diminishedValue = Math.max(preAccidentFmv - postRepairAcv, 0);
   
   // Calculate confidence ranges (10th and 90th percentiles)
   const confidenceRangeLow = calculatePercentile(postAccidentValues, 10);
@@ -131,8 +132,8 @@ export function calculateValuation(
     preAccidentFmv,
     postRepairAcv,
     diminishedValue,
-    dvPercentOfValue: (diminishedValue / preAccidentFmv) * 100,
-    dvPercentOfRepair: 0, // Will be calculated with repair cost
+    dvPercentOfValue: preAccidentFmv > 0 ? (diminishedValue / preAccidentFmv) * 100 : 0,
+    dvPercentOfRepair: repairCost > 0 ? (diminishedValue / repairCost) * 100 : 0,
     confidenceRangeLow,
     confidenceRangeHigh,
     preAccidentCompsCount: preAccidentComps.length,

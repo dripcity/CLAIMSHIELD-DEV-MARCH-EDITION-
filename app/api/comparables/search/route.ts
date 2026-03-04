@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/utils/auth';
+import { requireAuth, requireAppraisalOwnership } from '@/lib/utils/auth';
 import { searchComparables } from '@/lib/scraping/apify-search';
 import { db } from '@/lib/db';
 import { comparableVehicles } from '@/lib/db/schema';
@@ -8,6 +8,8 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth();
     const { appraisalId, vehicleSpecs, location, searchType } = await req.json();
+
+    await requireAppraisalOwnership(appraisalId, user.id);
     
     // searchType: 'pre_accident' or 'post_accident'
     const results = await searchComparables({
@@ -50,6 +52,12 @@ export async function POST(req: NextRequest) {
     if (error instanceof Error) {
       if (error.message === 'Unauthorized') {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      if (error.message === 'Forbidden') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+      if (error.message === 'Appraisal not found') {
+        return NextResponse.json({ error: 'Appraisal not found' }, { status: 404 });
       }
     }
     console.error('Search error:', error);

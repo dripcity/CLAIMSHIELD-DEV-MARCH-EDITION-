@@ -5,6 +5,8 @@ import { classifySeverity } from '@/lib/calculations/severity-classifier';
 import { db } from '@/lib/db';
 import { appraisals, comparableVehicles } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { valuationInputSchema } from '@/lib/validation/schemas';
+import { z } from 'zod';
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,6 +30,18 @@ export async function POST(req: NextRequest) {
       .from(comparableVehicles)
       .where(eq(comparableVehicles.appraisalId, appraisalId));
     
+    const normalizedComps = comps.map(c => ({
+      listingPrice: parseFloat(c.listingPrice as string),
+      mileage: c.mileage,
+      year: c.year,
+      accidentHistory: c.accidentHistory,
+    }));
+
+    const validatedInput = valuationInputSchema.parse({
+      comparables: normalizedComps,
+      repairCost: appraisal.accidentDetails?.totalRepairCost ?? 0,
+    });
+
     // Calculate severity
     const severityAnalysis = classifySeverity(
       appraisal.accidentDetails as any,
@@ -37,13 +51,9 @@ export async function POST(req: NextRequest) {
     // Calculate valuation
     const valuationResults = calculateValuation(
       appraisal.subjectVehicle as any,
-      comps.map(c => ({
-        listingPrice: parseFloat(c.listingPrice as string),
-        mileage: c.mileage,
-        year: c.year,
-        accidentHistory: c.accidentHistory,
-      })),
-      severityAnalysis
+      validatedInput.comparables,
+      severityAnalysis,
+      validatedInput.repairCost ?? 0
     );
     
     // Update appraisal
@@ -66,6 +76,12 @@ export async function POST(req: NextRequest) {
       if (error.message === 'Forbidden') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
+      if (error.message === 'Appraisal not found') {
+        return NextResponse.json({ error: 'Appraisal not found' }, { status: 404 });
+      }
+    }
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Invalid valuation inputs', issues: error.issues }, { status: 400 });
     }
     console.error('Calculation error:', error);
     return NextResponse.json({ error: 'Calculation failed' }, { status: 500 });
