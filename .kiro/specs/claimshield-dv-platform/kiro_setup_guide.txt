@@ -1,0 +1,1068 @@
+# ClaimShield DV - Complete Kiro IDE Setup Guide
+
+**Objective**: Configure Kiro IDE for autonomous 24/7 execution of ClaimShield DV launch roadmap with optimal agent performance and minimal human intervention.
+
+**Estimated Setup Time**: 2-3 hours  
+**Complexity**: Intermediate  
+**Prerequisites**: Kiro IDE installed, ClaimShield DV codebase cloned
+
+---
+
+## Table of Contents
+
+1. [Pre-Flight Checklist](#1-pre-flight-checklist)
+2. [Project Structure Setup](#2-project-structure-setup)
+3. [Steering Files Configuration](#3-steering-files-configuration)
+4. [Agent Hooks Setup](#4-agent-hooks-setup)
+5. [Spec Import Strategy](#5-spec-import-strategy)
+6. [Model Selection & Configuration](#6-model-selection--configuration)
+7. [MCP Server Configuration](#7-mcp-server-configuration)
+8. [Execution Workflow](#8-execution-workflow)
+9. [Checkpoint & Recovery Procedures](#9-checkpoint--recovery-procedures)
+10. [Troubleshooting](#10-troubleshooting)
+
+---
+
+## 1. Pre-Flight Checklist
+
+### A. Install Kiro IDE
+
+```bash
+# Download from https://kiro.dev/downloads/
+# Login with GitHub, Google, or AWS Builder ID
+# Allow shell integration when prompted
+```
+
+### B. Verify Project State
+
+```bash
+cd ~/Documents/CLAIMSHIELD\ DEV\ \(MARCH\ EDITION\)
+
+# Verify git is initialized
+git status
+
+# Create checkpoint branch
+git checkout -b kiro-autonomous-execution
+git push -u origin kiro-autonomous-execution
+```
+
+### C. Environment Variables
+
+Copy `.env.local.example` to `.env.local` and populate:
+
+```bash
+cp .env.local.example .env.local
+```
+
+**CRITICAL**: Ensure these are set:
+- `DATABASE_URL` (Neon PostgreSQL)
+- `CLERK_SECRET_KEY` / `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET`
+- `GOOGLE_AI_API_KEY` (for Gemini)
+- `SENDGRID_API_KEY`
+- `BLOB_READ_WRITE_TOKEN` (Vercel Blob)
+
+---
+
+## 2. Project Structure Setup
+
+### A. Create Kiro Directory Structure
+
+```bash
+# From project root
+mkdir -p .kiro/{steering,specs,hooks,context}
+mkdir -p .kiro/specs/{phase1,phase2,phase3,phase4}
+```
+
+### B. Copy Reference Documents
+
+```bash
+# Move your roadmap and reports into .kiro/context/
+cp /path/to/CLAIMSHIELD_DV_TASK_ROADMAP.json .kiro/context/
+cp /path/to/CLAIMSHIELD_DV_COMPREHENSIVE_LAUNCH_READINESS_REPORT.md .kiro/context/
+cp /path/to/CLAIMSHIELD_DV_NEXT_24_HOURS_QUICKSTART.md .kiro/context/
+```
+
+### C. Create Context Index
+
+Create `.kiro/context/index.json`:
+
+```json
+{
+  "globalContext": [
+    "context/CLAIMSHIELD_DV_TASK_ROADMAP.json"
+  ],
+  "phaseContext": {
+    "phase1": ["context/NEXT_24_HOURS_QUICKSTART.md"],
+    "phase2": [],
+    "phase3": [],
+    "phase4": []
+  },
+  "taskSpecificContext": {
+    "CS-LR-001": ["context/COMPREHENSIVE_LAUNCH_READINESS_REPORT.md#1.1"],
+    "CS-LR-003": ["context/COMPREHENSIVE_LAUNCH_READINESS_REPORT.md#1.3"],
+    "CS-LR-006": ["context/COMPREHENSIVE_LAUNCH_READINESS_REPORT.md#P0-05"],
+    "CS-LR-021": ["context/COMPREHENSIVE_LAUNCH_READINESS_REPORT.md#2.1"]
+  },
+  "checkpointContext": {
+    "afterPhase1": ["context/COMPREHENSIVE_LAUNCH_READINESS_REPORT.md#6.1"],
+    "beforeProduction": ["context/COMPREHENSIVE_LAUNCH_READINESS_REPORT.md#6.2"]
+  }
+}
+```
+
+---
+
+## 3. Steering Files Configuration
+
+Kiro uses steering files to provide persistent project knowledge. Create these in `.kiro/steering/`:
+
+### A. Foundation Steering Files
+
+Generate foundation files:
+
+1. Open Kiro IDE
+2. Open your project: `File > Open Folder` → Select ClaimShield DV directory
+3. Click **Kiro** icon in left sidebar
+4. Under **Agent Steering**, click **Generate Steering Docs**
+5. Kiro will create: `product.md`, `tech.md`, `structure.md`
+
+### B. Custom Steering Files
+
+Create these additional steering files manually:
+
+#### `.kiro/steering/security-requirements.md`
+
+```markdown
+---
+title: Security Requirements
+inclusion: auto
+description: Security and authorization patterns. Use when working on API routes, auth, or data access.
+---
+
+# Security Requirements
+
+## Critical Security Principles
+
+1. **Object-Level Authorization**: Every API route that accesses user data MUST validate ownership
+   - Check `userId` from authenticated session against resource owner
+   - Never trust client-provided IDs without verification
+
+2. **Mass Assignment Protection**: Never spread untrusted request bodies into DB operations
+   - Use explicit allowlists via Zod schemas
+   - Reject unknown fields with 400 status
+
+3. **Private Storage**: All user documents and reports use private blob storage
+   - Generate signed URLs with expiry for access
+   - Never expose direct blob URLs to clients
+
+4. **Rate Limiting**: API routes must implement rate limiting (coming in CS-LR-035)
+
+## Authorization Pattern Template
+
+```typescript
+// API Route Authorization Check Pattern
+import { auth } from '@clerk/nextjs';
+import { db } from '@/lib/db';
+import { appraisals } from '@/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
+
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  const { userId } = await auth();
+  
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Verify ownership before ANY data access
+  const appraisal = await db.query.appraisals.findFirst({
+    where: and(
+      eq(appraisals.id, params.id),
+      eq(appraisals.userId, userId)
+    ),
+  });
+
+  if (!appraisal) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
+  // Safe to proceed with owned resource
+  return NextResponse.json(appraisal);
+}
+```
+
+## Validation Pattern Template
+
+```typescript
+// Input Validation with Zod
+import { z } from 'zod';
+
+const UpdateAppraisalSchema = z.object({
+  claimNumber: z.string().optional(),
+  status: z.enum(['draft', 'in_progress', 'complete']).optional(),
+  // Explicitly list ALL allowed fields
+}).strict(); // Reject unknown fields
+
+export async function PATCH(request: Request) {
+  const body = await request.json();
+  
+  // Validate against schema
+  const result = UpdateAppraisalSchema.safeParse(body);
+  
+  if (!result.success) {
+    return NextResponse.json(
+      { error: 'Validation failed', details: result.error.errors },
+      { status: 400 }
+    );
+  }
+
+  // Use validated data only
+  const validatedData = result.data;
+  
+  await db.update(appraisals)
+    .set(validatedData)
+    .where(eq(appraisals.id, params.id));
+}
+```
+
+## Tasks With Security Impact
+
+When working on these task IDs, apply strict security review:
+- CS-LR-003, CS-LR-004, CS-LR-005, CS-LR-006, CS-LR-007
+- CS-LR-010 (webhook idempotency)
+- CS-LR-035 (audit logging and rate limiting)
+
+## Security Gate Checklist
+
+Before marking security-related tasks complete:
+- [ ] Authorization check present on all data access paths
+- [ ] Input validation uses strict Zod schema
+- [ ] No mass assignment vulnerabilities
+- [ ] Signed URLs used for private resources
+- [ ] Error messages don't leak sensitive data
+```
+
+#### `.kiro/steering/claimshield-conventions.md`
+
+```markdown
+---
+title: ClaimShield Code Conventions
+inclusion: always
+---
+
+# ClaimShield DV Code Conventions
+
+## Tech Stack Constraints
+
+- **Framework**: Next.js 14+ (App Router only)
+- **Database**: PostgreSQL via Drizzle ORM (Neon hosted)
+- **Auth**: Clerk (React 19.x compatible versions ONLY)
+- **Payments**: Stripe
+- **Storage**: Vercel Blob (private access model)
+- **AI**: Google Gemini 2.0 Flash or Gemini 3.1 Pro
+- **Styling**: Tailwind CSS + shadcn/ui components
+
+## Critical Dependency Constraints
+
+**IMPORTANT**: Clerk and React versions MUST be compatible. Reference CS-LR-001 resolution for version matrix.
+
+Current Known-Good Set:
+- `next`: 15.x
+- `react`: 19.x  
+- `react-dom`: 19.x
+- `@clerk/nextjs`: (latest compatible with React 19)
+
+## File Organization
+
+```
+app/
+  (auth)/          # Unauthenticated routes
+  (dashboard)/     # Authenticated dashboard routes
+  _components/     # Shared components
+  api/             # API routes
+lib/
+  ai/              # AI extraction utilities
+  calculations/    # Valuation logic
+  db/              # Database schema and queries
+  legal/           # State citations and compliance
+  pdf/             # Report generation
+  storage/         # Blob storage utilities
+  templates/       # Document templates
+  utils/           # Shared utilities
+components/ui/     # shadcn components
+```
+
+## Naming Conventions
+
+- **API Routes**: `app/api/[resource]/route.ts` or `app/api/[resource]/[id]/route.ts`
+- **Components**: PascalCase (e.g., `WizardLayout.tsx`)
+- **Utilities**: camelCase (e.g., `calculateDV.ts`)
+- **Database Tables**: snake_case (e.g., `comparable_vehicles`)
+
+## Route Patterns
+
+**CRITICAL**: All wizard and dashboard routes MUST use `/dashboard/` namespace.
+
+✅ Correct:
+- `/dashboard/appraisals/[id]`
+- `/dashboard/appraisals/[id]/wizard`
+
+❌ Incorrect (causes navigation bugs):
+- `/appraisals/[id]`
+- `/appraisals/[vin]/edit`
+
+## Testing Standards
+
+- Unit tests for calculations, utilities, validators
+- Integration tests for API routes
+- E2E tests (Playwright) for critical user journeys
+- Property-based tests for valuation logic (coming)
+
+## Code Quality Gates
+
+Before any commit:
+1. `npm run lint` passes
+2. `npm run build` completes successfully  
+3. `npm run test:run` passes (when tests stabilized)
+4. No TypeScript `any` types in new code
+5. Authorization checks present on mutating endpoints
+
+## When to Use Specs vs. Chat
+
+**Use Specs** (formal spec-driven workflow):
+- Multi-step features (e.g., CS-LR-021 PDF generation)
+- Features requiring design decisions (e.g., template engine)
+- Features with security implications
+
+**Use Chat** (direct implementation):
+- Bug fixes with clear root cause
+- Refactors without behavioral changes
+- Simple CRUD operations
+```
+
+#### `.kiro/steering/task-execution-protocol.md`
+
+```markdown
+---
+title: Task Execution Protocol
+inclusion: auto
+description: Task execution workflow and quality gates. Use when starting any roadmap task.
+---
+
+# Task Execution Protocol
+
+## Before Starting Any Task
+
+1. **Load Task Context**:
+   ```
+   #file:.kiro/context/CLAIMSHIELD_DV_TASK_ROADMAP.json
+   ```
+
+2. **Identify Task Details**:
+   - Task ID (e.g., CS-LR-001)
+   - Dependencies (check `dependencies` array)
+   - Acceptance criteria (verify each criterion)
+   - Files to modify (reference `filesToModify`)
+
+3. **Check Dependencies**:
+   - All blocking tasks marked "Done" in roadmap
+   - No unresolved merge conflicts in target files
+
+## During Task Execution
+
+1. **Create Feature Branch** (if not in autonomous mode):
+   ```bash
+   git checkout -b task/CS-LR-XXX-description
+   ```
+
+2. **Implement Changes**:
+   - Follow technical approach from roadmap
+   - Reference acceptance criteria continuously
+   - Apply security patterns from steering files
+
+3. **Validate Implementation**:
+   - Run `npm run lint`
+   - Run `npm run build`
+   - Execute relevant tests
+   - Manual verification if E2E required
+
+## Task Completion Checklist
+
+Before marking task complete:
+
+- [ ] All acceptance criteria met
+- [ ] Lint passes
+- [ ] Build passes
+- [ ] Tests updated/added (if applicable)
+- [ ] Security review (for P0/P1 security tasks)
+- [ ] Documentation updated (if API/behavior changed)
+- [ ] Files match `filesToModify` expectation
+
+## Escalation Triggers
+
+**Stop and request human review if**:
+- Acceptance criteria unclear or contradictory
+- Technical approach blocked by external dependency
+- Test failures unrelated to current changes
+- Security implications beyond task scope
+- Estimated hours exceeded by >50%
+
+## Status Update Format
+
+When updating roadmap status, use this comment format:
+
+```
+Task CS-LR-XXX: [Status]
+Completed: [timestamp]
+Acceptance Criteria: X/Y met
+Blockers: [None | Description]
+Next Action: [Next task ID | Human review required]
+```
+
+## Checkpoint Gates
+
+**Phase 1 Checkpoint** (after CS-LR-014):
+- Human reviews all P0 security patches
+- Runtime stability verified (`npm run dev` boots cleanly)
+- Payment/subscription pricing verified against spec
+
+**Phase 2 Checkpoint** (after CS-LR-026):
+- Full wizard flow manual QA
+- Report generation visual review
+- Template accuracy validation
+
+**Phase 3 Checkpoint** (after CS-LR-029):
+- Role-based feature matrix review
+- Educational content legal review
+- Team management UX validation
+
+**Phase 4 Checkpoint** (before production):
+- Full E2E test suite passing
+- Load testing results reviewed
+- Security audit sign-off
+- Launch runbook dry-run
+```
+
+### C. Pricing & Monetization Steering
+
+#### `.kiro/steering/pricing-requirements.md`
+
+```markdown
+---
+title: Pricing & Monetization Requirements
+inclusion: auto
+description: Stripe pricing, plan model, and checkout requirements. Use when working on payment/subscription features.
+---
+
+# Pricing & Monetization Requirements
+
+## Individual Report Pricing
+
+**CRITICAL**: Individual appraisal report checkout MUST charge **$129.00**.
+
+Stripe Configuration:
+- Amount: `12900` (cents)
+- Currency: `usd`
+- Product: Individual Diminished Value Report
+
+Code Reference:
+```typescript
+// app/api/checkout/appraisal/route.ts
+const lineItem = {
+  price_data: {
+    currency: 'usd',
+    unit_amount: 12900, // $129.00
+    product_data: {
+      name: 'Diminished Value Appraisal Report',
+    },
+  },
+  quantity: 1,
+};
+```
+
+## Subscription Plan Model
+
+**CRITICAL**: Four role-based subscription plans are required:
+
+1. **Individual** - Consumer self-service
+   - Price: TBD (confirm with stakeholder)
+   - Features: Basic wizard, single report generation
+
+2. **Professional Appraiser** - USPAP-compliant professionals
+   - Price: TBD
+   - Features: Expert affidavit generation, credentials management
+
+3. **Attorney** - Law firms and paralegals
+   - Price: TBD
+   - Features: Team management, bulk download, all templates
+
+4. **Body Shop** - White-label for repair facilities
+   - Price: TBD
+   - Features: White-label branding, customer portal
+
+## Stripe Environment Configuration
+
+Required environment variables:
+```bash
+STRIPE_SECRET_KEY=sk_...
+STRIPE_PUBLISHABLE_KEY=pk_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# Price IDs (set after creating products in Stripe Dashboard)
+STRIPE_PRICE_INDIVIDUAL=price_...
+STRIPE_PRICE_PROFESSIONAL=price_...
+STRIPE_PRICE_ATTORNEY=price_...
+STRIPE_PRICE_BODY_SHOP=price_...
+```
+
+## Webhook Fulfillment Requirements
+
+Post-payment actions (CS-LR-010):
+1. **Idempotency**: Store processed event IDs to prevent double-processing
+2. **Report Generation**: Trigger PDF generation workflow on `checkout.session.completed`
+3. **Email Delivery**: Send report-ready notification when PDF available
+4. **Entitlement**: Update user record with purchased report access
+
+## Tasks Affected
+
+- CS-LR-008: Individual report pricing alignment
+- CS-LR-009: Subscription plan model alignment
+- CS-LR-010: Webhook fulfillment implementation
+```
+
+---
+
+## 4. Agent Hooks Setup
+
+Hooks automate repetitive tasks. Create these in `.kiro/hooks/`:
+
+### A. Pre-Commit Quality Gate Hook
+
+Create `.kiro/hooks/pre-commit-quality.kiro.hook`:
+
+```json
+{
+  "enabled": true,
+  "name": "Pre-Commit Quality Gate",
+  "description": "Run lint and build before allowing commits",
+  "when": {
+    "type": "beforeCommit"
+  },
+  "action": {
+    "type": "shellCommand",
+    "command": "npm run lint && npm run build",
+    "onFailure": "block"
+  }
+}
+```
+
+### B. Auto-Test on API Route Save
+
+Create `.kiro/hooks/test-api-routes.kiro.hook`:
+
+```json
+{
+  "enabled": true,
+  "name": "Test API Routes on Save",
+  "description": "Run integration tests when API routes change",
+  "when": {
+    "type": "fileEdited",
+    "patterns": ["app/api/**/route.ts"]
+  },
+  "action": {
+    "type": "agentPrompt",
+    "prompt": "Run integration tests for the modified API route. Verify:\n1. Authorization checks work correctly\n2. Input validation rejects invalid data\n3. Success cases return expected responses\n\nReport test results."
+  }
+}
+```
+
+### C. Security Review Trigger
+
+Create `.kiro/hooks/security-review.kiro.hook`:
+
+```json
+{
+  "enabled": true,
+  "name": "Security Review for Auth Routes",
+  "description": "Trigger security checklist for authorization-related changes",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "app/api/appraisals/**/route.ts",
+      "app/api/comparables/**/route.ts",
+      "app/api/documents/**/route.ts",
+      "lib/utils/auth.ts"
+    ]
+  },
+  "action": {
+    "type": "agentPrompt",
+    "prompt": "Review this file against security requirements from #security-requirements steering file.\n\nVerify:\n- [ ] Authorization check present before data access\n- [ ] No mass assignment vulnerabilities\n- [ ] Input validation with Zod schema\n- [ ] Error messages don't leak data\n\nReport findings and any violations."
+  }
+}
+```
+
+### D. Update Roadmap Status Hook
+
+Create `.kiro/hooks/update-roadmap-status.kiro.hook`:
+
+```json
+{
+  "enabled": false,
+  "name": "Update Roadmap Status",
+  "description": "Manually update task status in roadmap JSON. Use /update-roadmap-status",
+  "when": {
+    "type": "manual"
+  },
+  "action": {
+    "type": "agentPrompt",
+    "prompt": "Update the task roadmap JSON:\n1. Ask me for the task ID and new status\n2. Update .kiro/context/CLAIMSHIELD_DV_TASK_ROADMAP.json\n3. Add completion timestamp\n4. Commit with message 'chore: mark [task-id] as [status]'"
+  }
+}
+```
+
+---
+
+## 5. Spec Import Strategy
+
+Kiro's spec-driven workflow is optional but powerful for complex tasks. Here's how to use it strategically:
+
+### A. When to Create Specs
+
+**Create formal specs for these tasks**:
+- CS-LR-021 (PDF Report Generation) - Complex multi-section document
+- CS-LR-023 (Template Engine) - 7 document templates
+- CS-LR-027 (Team Management) - New feature with DB changes
+- CS-LR-032 (Test Suite Refactor) - Large refactor scope
+
+**Use direct chat for these tasks**:
+- CS-LR-001, 002 (Dependency fixes) - Clear fixes
+- CS-LR-003, 004, 005 (Auth patches) - Repetitive pattern
+- CS-LR-008, 009 (Pricing alignment) - Configuration changes
+
+### B. Import Roadmap as Initial Spec
+
+For tasks requiring specs:
+
+1. Open Kiro chat
+2. Type: `#file:.kiro/context/CLAIMSHIELD_DV_TASK_ROADMAP.json`
+3. Prompt:
+   ```
+   Create a spec for task CS-LR-021 (PDF Report Generation) using the roadmap details.
+   
+   Requirements should include:
+   - All 15-25 page report sections from master schema
+   - Role-specific USPAP sections
+   - Professional formatting with pagination
+   
+   Design should cover:
+   - Report assembler architecture
+   - Section component structure  
+   - Page break logic
+   
+   Tasks should map to:
+   - Individual section implementations
+   - Layout/styling components
+   - Integration with appraisal data model
+   ```
+
+4. Kiro will generate:
+   - `.kiro/specs/cs-lr-021-pdf-generation/requirements.md`
+   - `.kiro/specs/cs-lr-021-pdf-generation/design.md`
+   - `.kiro/specs/cs-lr-021-pdf-generation/tasks.md`
+
+5. Review and refine, then execute via spec UI
+
+---
+
+## 6. Model Selection & Configuration
+
+### A. Recommended Model Configuration
+
+Based on current benchmarks and your budget priorities:
+
+**Primary Model**: Claude Sonnet 4.6
+- Best balance of quality (79.6% SWE-bench) and cost
+- 1M token context (handles full codebase + docs)
+- Excellent for iterative development
+
+**Cost-Optimized Alternative**: DeepSeek V3.2
+- 67-74% SWE-bench performance
+- Significantly cheaper (~$0.27/M input tokens vs $3/M)
+- Good for repetitive CRUD tasks
+
+**Configure in Kiro**:
+1. Open Settings (Cmd/Ctrl + ,)
+2. Search "Model"
+3. Set default model to Claude Sonnet 4.6
+4. Enable model switching for cost-sensitive tasks
+
+### B. Model Selection Strategy Per Task Type
+
+```markdown
+## Task-to-Model Mapping
+
+**Claude Sonnet 4.6** (use for):
+- P0 security tasks (CS-LR-003, 004, 005, 006, 007)
+- Complex generation (CS-LR-021 PDF, CS-LR-023 Templates)
+- Novel integrations (CS-LR-018 Gemini, CS-LR-019 Apify)
+
+**DeepSeek V3.2** (use for):
+- Routing fixes (CS-LR-015)
+- State wiring (CS-LR-016)
+- Schema/migration work (CS-LR-011, 012)
+- Test refactors (CS-LR-032)
+
+**Human Review Required**:
+- Legal content (CS-LR-024 Expert Affidavit)
+- Pricing decisions (CS-LR-008, 009 confirmation)
+- Final security audit (CS-LR-035 review)
+```
+
+---
+
+## 7. MCP Server Configuration
+
+MCP servers extend Kiro with external tools. Configure for ClaimShield:
+
+### A. Web Search MCP (for documentation lookup)
+
+1. Open Kiro Command Palette (Cmd/Ctrl + Shift + P)
+2. Type "MCP: Configure Servers"
+3. Add:
+
+```json
+{
+  "mcpServers": {
+    "web-search": {
+      "command": "uvx",
+      "args": ["mcp-server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "your-key-here"
+      },
+      "disabled": false,
+      "autoApprove": ["search"]
+    }
+  }
+}
+```
+
+### B. Optional: Database MCP (for schema inspection)
+
+```json
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "uvx",
+      "args": ["mcp-server-postgres"],
+      "env": {
+        "DATABASE_URL": "${DATABASE_URL}"
+      },
+      "disabled": false
+    }
+  }
+}
+```
+
+---
+
+## 8. Execution Workflow
+
+### Day 1 Execution (Hours 0-24)
+
+1. **Open Kiro with Project**:
+   ```bash
+   cd ~/Documents/CLAIMSHIELD\ DEV\ \(MARCH\ EDITION\)
+   kiro .
+   ```
+
+2. **Load Day 1 Context**:
+   - In Kiro chat: `#file:.kiro/context/NEXT_24_HOURS_QUICKSTART.md`
+   - In Kiro chat: `#file:.kiro/context/CLAIMSHIELD_DV_TASK_ROADMAP.json`
+
+3. **Start First Task**:
+   ```
+   Execute task CS-LR-001 following the task execution protocol.
+   
+   Reference:
+   - Technical approach from roadmap
+   - #security-requirements for any auth-related changes
+   - Acceptance criteria must all be met before completion
+   
+   Begin implementation.
+   ```
+
+4. **Monitor Progress**:
+   - Watch Kiro's task execution in real-time
+   - Review file changes in diff view
+   - Approve or reject changes at logical checkpoints
+
+5. **Checkpoint A (Hour 6)**:
+   ```
+   Verify Checkpoint A requirements:
+   - Run `npm run dev` and confirm app boots without errors
+   - Test root route in browser - should not show internal server error
+   - Review all security patches from CS-LR-003, 004, 005
+   
+   Report status and proceed to next phase if passing.
+   ```
+
+### Autonomous Mode (Optional)
+
+For maximum velocity, enable Kiro's autonomous mode:
+
+1. Settings > Kiro > Enable "Autonomous Mode"
+2. Set approval threshold: "Auto-approve low-risk changes"
+3. Define manual approval triggers:
+   - Database schema changes
+   - Security-related files
+   - Package.json modifications
+
+**Recommendation**: Start with manual approval for first 5 tasks, then enable autonomous mode once you trust the pattern.
+
+### Parallel Execution Strategy
+
+Your roadmap defines 5 parallel tracks. To execute in parallel:
+
+1. **Open Multiple Kiro Windows**:
+   - Window 1: Track 1 (Frontend Components)
+   - Window 2: Track 2 (Backend API)
+   - Window 3: Track 3 (Database/Data Layer)
+   - Window 4: Track 4 (Integration/Testing)
+   - Window 5: Track 5 (Documentation/DevOps)
+
+2. **Coordinate Dependencies**:
+   - Track managers check `dependencies` array before starting tasks
+   - Use Git branches per track: `track-1-frontend`, `track-2-backend`, etc.
+   - Merge to `kiro-autonomous-execution` at phase boundaries
+
+3. **Conflict Resolution**:
+   - If tracks touch same files, serialize those tasks
+   - Use Kiro's conflict resolution: "Merge changes from track-2-backend into this file"
+
+---
+
+## 9. Checkpoint & Recovery Procedures
+
+### Checkpoint Protocol
+
+**After Each Phase**:
+
+1. **Aggregate Status**:
+   ```
+   Review all tasks in Phase X.
+   
+   For each task:
+   - Verify acceptance criteria met
+   - Confirm tests passing
+   - Check security review (if applicable)
+   
+   Generate phase completion report with:
+   - Tasks completed: X/Y
+   - Blockers: [list]
+   - Ready for next phase: Yes/No
+   ```
+
+2. **Human Review Gate**:
+   - Review Kiro's phase completion report
+   - Manually test critical workflows
+   - Sign off or request corrections
+
+3. **Commit Checkpoint**:
+   ```bash
+   git add .
+   git commit -m "checkpoint: Phase X complete - all tasks verified"
+   git tag phase-X-complete
+   git push origin kiro-autonomous-execution --tags
+   ```
+
+### Recovery Procedures
+
+**If Task Fails or Gets Stuck**:
+
+1. **Analyze Failure**:
+   ```
+   Analyze why task CS-LR-XXX failed.
+   
+   Check:
+   - Were dependencies actually complete?
+   - Is there a missing environment variable?
+   - Are acceptance criteria achievable with current codebase state?
+   
+   Provide diagnosis and recommended fix.
+   ```
+
+2. **Rollback Strategy**:
+   ```bash
+   # Rollback to last checkpoint
+   git reset --hard phase-X-complete
+   
+   # Or rollback specific task
+   git revert <task-commit-sha>
+   ```
+
+3. **Escalation to Human**:
+   - Use `/update-roadmap-status` hook to mark task as blocked
+   - Add note in roadmap: `"blockers": "Human review required: [reason]"`
+   - Continue with non-dependent tasks in parallel
+
+### Session Recovery
+
+If Kiro session crashes or you need to resume:
+
+1. **Reload Context**:
+   ```
+   #file:.kiro/context/CLAIMSHIELD_DV_TASK_ROADMAP.json
+   
+   What was the last completed task? 
+   What is the current status of the roadmap?
+   What should I work on next?
+   ```
+
+2. **Resume from Checkpoint**:
+   ```
+   Resume execution from last checkpoint: phase-X-complete
+   
+   Next task in queue: CS-LR-XXX
+   Dependencies verified: [Yes/No]
+   
+   Begin implementation.
+   ```
+
+---
+
+## 10. Troubleshooting
+
+### Issue: Kiro Can't Find Steering Files
+
+**Solution**:
+```bash
+# Verify structure
+ls -la .kiro/steering/
+
+# Ensure frontmatter is valid YAML
+cat .kiro/steering/security-requirements.md
+
+# Restart Kiro to reload steering files
+```
+
+### Issue: Hooks Not Triggering
+
+**Solution**:
+1. Open Kiro Panel > Agent Hooks
+2. Verify hook is enabled
+3. Check pattern matches your file path
+4. Test manually: `/hook-name` in chat
+
+### Issue: Context Window Exceeded
+
+**Solution**:
+```
+Summarize the current task state and essential context.
+
+Remove from context:
+- Historical tasks (keep only current + dependencies)
+- Verbose documentation sections
+- Completed phase context
+
+Reload with minimal context for current task only.
+```
+
+### Issue: Model Making Repetitive Mistakes
+
+**Solution**:
+1. Add specific constraint to steering file
+2. Create a hook with validation for that pattern
+3. Switch to Claude Sonnet 4.6 if using cheaper model
+4. Request human review if pattern unclear
+
+### Issue: Merge Conflicts Between Tracks
+
+**Solution**:
+```
+Analyze merge conflict in [file].
+
+Track 1 changes: [description]
+Track 2 changes: [description]
+
+Determine correct resolution based on:
+- Which task has priority per roadmap
+- Whether changes are complementary or conflicting
+- Impact on acceptance criteria for both tasks
+
+Provide merged resolution.
+```
+
+### Issue: Tests Failing After Changes
+
+**Solution**:
+```
+Analyze test failures after task CS-LR-XXX.
+
+Failed tests: [list]
+Root cause: [analysis]
+
+Options:
+1. Fix implementation to pass existing tests
+2. Update tests if behavior intentionally changed
+3. Identify if failure is pre-existing (not introduced by this task)
+
+Recommend course of action with justification.
+```
+
+---
+
+## Quick Start Commands
+
+Once setup is complete:
+
+```bash
+# Open project in Kiro
+cd ~/Documents/CLAIMSHIELD\ DEV\ \(MARCH\ EDITION\)
+kiro .
+
+# In Kiro chat - Start Day 1
+#file:.kiro/context/NEXT_24_HOURS_QUICKSTART.md
+Begin Day 1 execution starting with CS-LR-001.
+
+# Check roadmap status anytime
+#file:.kiro/context/CLAIMSHIELD_DV_TASK_ROADMAP.json
+What is current progress? Which tasks are complete?
+
+# Load security requirements for auth tasks
+#security-requirements
+
+# Trigger manual hook
+/update-roadmap-status
+
+# Create spec for complex task
+Create spec for CS-LR-021 using roadmap task details
+```
+
+---
+
+## Success Metrics
+
+Track these throughout execution:
+
+- **Velocity**: Tasks completed per 24-hour period
+- **Quality**: Acceptance criteria pass rate
+- **Stability**: Build/lint/test pass consistency
+- **Security**: Zero new authorization vulnerabilities introduced
+- **Checkpoint Gates**: Pass rate on first attempt
+
+**Target**: Complete 560 agent-hours of work in 7-14 calendar days with 5-track parallel execution and 12-hour human oversight shifts.
+
+---
+
+## Next Steps After Setup
+
+1. ✅ Complete all file creation from sections 2-4
+2. ✅ Verify steering files load in Kiro (check sidebar)
+3. ✅ Test one hook manually to confirm working
+4. ✅ Run Day 1 kickoff prompt
+5. ✅ Monitor first task (CS-LR-001) execution
+6. ✅ Refine steering/hooks based on initial learnings
+7. ✅ Enable autonomous mode once confident
+8. ✅ Scale to parallel tracks after Phase 1 complete
+
+**You're ready for autonomous execution. Good luck! 🚀**

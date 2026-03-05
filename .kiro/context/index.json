@@ -1,0 +1,33 @@
+{
+  "globalContext": [
+    "CLAIMSHIELD_DV_TASK_ROADMAP.json"
+  ],
+  "phaseContext": {
+    "phase1": [
+      "NEXT_24_HOURS_QUICKSTART.md"
+    ],
+    "phase2": [],
+    "phase3": [],
+    "phase4": []
+  },
+  "taskSpecificContext": {
+    "CS-LR-001": ["extracts/runtime-dependencies.md"],
+    "CS-LR-003": ["extracts/authorization-patterns.md"],
+    "CS-LR-004": ["extracts/authorization-patterns.md"],
+    "CS-LR-005": ["extracts/mass-assignment-protection.md"],
+    "CS-LR-006": ["extracts/private-storage.md"],
+    "CS-LR-007": ["extracts/share-token-security.md"],
+    "CS-LR-008": ["extracts/pricing-requirements.md"],
+    "CS-LR-009": ["extracts/pricing-requirements.md"],
+    "CS-LR-010": ["extracts/webhook-fulfillment.md"],
+    "CS-LR-011": ["extracts/database-schema.md"],
+    "CS-LR-012": ["extracts/database-schema.md"],
+    "CS-LR-021": ["extracts/pdf-report-structure.md"],
+    "CS-LR-023": ["extracts/template-engine-requirements.md"],
+    "CS-LR-027": ["extracts/team-management.md"]
+  },
+  "checkpointContext": {
+    "afterPhase1": ["COMPREHENSIVE_LAUNCH_READINESS_REPORT.md"],
+    "beforeProduction": ["COMPREHENSIVE_LAUNCH_READINESS_REPORT.md"]
+  }
+}

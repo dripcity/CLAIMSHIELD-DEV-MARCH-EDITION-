@@ -1,0 +1,12 @@
+{
+  "enabled": true,
+  "name": "Load Task-Specific Context",
+  "description": "Automatically load relevant context extracts when starting a task",
+  "when": {
+    "type": "manual"
+  },
+  "action": {
+    "type": "agentPrompt",
+    "prompt": "I'm starting task {{taskId}}.\n\nCheck .kiro/context/index.json for task-specific context.\n\nLoad:\n1. Task details from roadmap JSON\n2. Relevant context extract (if mapped)\n3. Dependencies status\n\nProvide task summary and confirm ready to begin."
+  }
+}

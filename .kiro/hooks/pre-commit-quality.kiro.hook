@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Pre-Commit Quality Gate",
+  "description": "Run lint and build before allowing commits",
+  "when": {
+    "type": "beforeCommit"
+  },
+  "action": {
+    "type": "shellCommand",
+    "command": "npm run lint && npm run build",
+    "onFailure": "block"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "enabled": false,
+  "name": "Update Roadmap Status",
+  "description": "Manually update task status in roadmap JSON",
+  "when": {
+    "type": "manual"
+  },
+  "action": {
+    "type": "agentPrompt",
+    "prompt": "Update task status in roadmap:\n1. Ask for task ID and new status\n2. Update .kiro/context/CLAIMSHIELD_DV_TASK_ROADMAP.json\n3. Add completion timestamp\n4. Commit with message 'chore: mark [task-id] as [status]'"
+  }
+}

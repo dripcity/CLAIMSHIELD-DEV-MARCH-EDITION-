@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "name": "Security Review for Auth Routes",
+  "description": "Trigger security checklist for authorization-related changes",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "app/api/appraisals/**/route.ts",
+      "app/api/comparables/**/route.ts",
+      "app/api/documents/**/route.ts",
+      "lib/utils/auth.ts"
+    ]
+  },
+  "action": {
+    "type": "agentPrompt",
+    "prompt": "Review this file against security requirements.\n\nVerify:\n- [ ] Authorization check present before data access\n- [ ] No mass assignment vulnerabilities\n- [ ] Input validation with Zod schema\n- [ ] Error messages don't leak data\n\nReport findings and any violations."
+  }
+}
