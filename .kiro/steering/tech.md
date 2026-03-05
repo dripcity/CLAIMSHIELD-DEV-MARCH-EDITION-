@@ -1,3 +1,8 @@
+---
+title: Technology Stack
+inclusion: always
+---
+
 # ClaimShield DV - Technology Stack
 
 ## Framework and Language

@@ -1,3 +1,8 @@
+---
+title: Product Summary
+inclusion: always
+---
+
 # ClaimShield DV - Product Summary
 
 ClaimShield DV is a SaaS platform that generates professional diminished value (DV) vehicle appraisal reports. The platform guides users through creating legally-defensible DV appraisals using the comparable sales method, leveraging AI to extract data from documents, automatically search for comparable vehicles, perform precise calculations using legally-recognized methodologies, and generate comprehensive 15-25 page PDF reports with state-specific legal citations.

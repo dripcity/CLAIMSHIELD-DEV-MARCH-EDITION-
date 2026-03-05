@@ -1,3 +1,8 @@
+---
+title: Project Structure
+inclusion: always
+---
+
 # ClaimShield DV - Project Structure
 
 ## Directory Layout

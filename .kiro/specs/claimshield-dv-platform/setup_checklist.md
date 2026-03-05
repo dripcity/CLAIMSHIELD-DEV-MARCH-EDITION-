@@ -64,8 +64,8 @@ ls -la .kiro/steering/
 
 - [ ] In Kiro sidebar, expand **Agent Steering**
 - [ ] Confirm all 7 steering files appear
-- [ ] Check **Always Included**: `claimshield-conventions.md`, `product.md`, `tech.md`, `structure.md`
-- [ ] Check **Auto**: `security-requirements.md`, `task-execution-protocol.md`, `pricing-requirements.md`
+- [x] Check **Always Included**: `claimshield-conventions.md`, `product.md`, `tech.md`, `structure.md`
+- [x] Check **Auto**: `security-requirements.md`, `task-execution-protocol.md`, `pricing-requirements.md`
 
 ## Phase 4: Agent Hooks (30 mins)
 
