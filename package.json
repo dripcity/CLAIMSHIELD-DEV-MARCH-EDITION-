@@ -28,6 +28,7 @@
     "@radix-ui/react-toast": "^1.2.15",
     "@react-pdf/renderer": "^4.3.2",
     "@sendgrid/mail": "^8.1.6",
+    "@vercel/analytics": "^1.6.1",
     "@vercel/blob": "^2.3.0",
     "apify-client": "^2.22.2",
     "class-variance-authority": "^0.7.1",
